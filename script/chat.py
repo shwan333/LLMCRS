@@ -81,7 +81,11 @@ if __name__ == '__main__':
 
         goal_item_list = [f'"{item}"' for item in conv_dict['rec']]
         goal_item_str = ', '.join(goal_item_list)
-        seeker_prompt = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
+        seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
+        seeker_prompt = '''
+            Conversation History
+            #############
+        '''
         context_dict = [] # for save
 
         for i, text in enumerate(context):
@@ -135,12 +139,12 @@ if __name__ == '__main__':
                 'rec_success': rec_success
             })
             
-            seeker_prompt += f'Recommender: {recommender_text}\nSeeker:'
+            seeker_prompt += f'Recommender: {recommender_text}\n'
             
             # seeker
             year_pattern = re.compile(r'\(\d+\)')
             goal_item_no_year_list = [year_pattern.sub('', rec_item).strip() for rec_item in goal_item_list]
-            seeker_text = annotate_completion(args, seeker_prompt).strip()
+            seeker_text = annotate_completion(args, seeker_instruct, seeker_prompt).strip()
             
             seeker_response_no_movie_list = []
             for sent in nltk.sent_tokenize(seeker_text):

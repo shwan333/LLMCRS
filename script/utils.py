@@ -66,9 +66,14 @@ class my_stop_after_attempt(stop_base):
             retry_state.attempt_number -= 1
         return retry_state.attempt_number >= self.max_attempt_number
 
-def annotate_completion(args: argparse.Namespace, prompt: str, logit_bias=None) -> str:
+def annotate_completion(args: argparse.Namespace, instruct: str, prompt: str, logit_bias=None) -> str:
     if logit_bias is None:
         logit_bias = {}
+
+    prompt += '''
+        #############
+    '''
+    messages = [{'role': 'system', 'content': instruct}, {'role': 'user', 'content': prompt}]
 
     request_timeout = 20
     for attempt in Retrying(
@@ -77,11 +82,9 @@ def annotate_completion(args: argparse.Namespace, prompt: str, logit_bias=None) 
             wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8))
     ):
         with attempt:
-            response = openai.Completion.create(
-                model= args.user_model, prompt= prompt, temperature= 0, max_tokens= 128, stop='Recommender',
-                logit_bias=logit_bias,
-                request_timeout=request_timeout,
-            )['choices'][0]['text']
+            response = openai.ChatCompletion.create(
+                model= args.user_model, messages= messages, temperature= 0, max_tokens= 128, request_timeout=request_timeout,
+            )['choices'][0]['message']['content']
         request_timeout = min(300, request_timeout * 2)
 
     return response
