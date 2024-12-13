@@ -1,0 +1,11 @@
+# ignore 
+secret/
+*.pyc
+__pycache__/
+save/
+save_5/
+data/
+preference_data/
+script/opendialkg/
+script/redial/
+.vscode/
