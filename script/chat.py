@@ -71,11 +71,6 @@ if __name__ == '__main__':
         data = dialog_id2data[dialog_id]
         conv_dict = copy.deepcopy(data) # for model
         context = conv_dict['context']
-    for dialog_id in tqdm(dialog_id_list, desc="Processing Dialogs"):
-        dialog_id = random.choice(dialog_id_list)
-        data = dialog_id2data[dialog_id]
-        conv_dict = copy.deepcopy(data) # for model
-        context = conv_dict['context']
 
         goal_item_list = [f'"{item}"' for item in conv_dict['rec']]
         goal_item_str = ', '.join(goal_item_list)
@@ -178,11 +173,6 @@ if __name__ == '__main__':
         conv_dict['context'] = context_dict
         data['simulator_dialog'] = conv_dict
 
-            # save
-            with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
-                json.dump(data, f, ensure_ascii=False, indent=2)
-
-            # dialog_id_set -= get_exist_dialog_set()
-            dialog_id_list.remove(dialog_id)
-            pbar.update(1)
-        
+        # save
+        with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
+            json.dump(data, f, ensure_ascii=False, indent=2)
