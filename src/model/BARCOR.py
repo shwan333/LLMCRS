@@ -1,5 +1,6 @@
 import json
 import torch
+import argparse
 from accelerate import Accelerator
 from accelerate.utils import set_seed
 
@@ -15,19 +16,17 @@ from src.model.barcor.barcor_model import BartForSequenceClassification
 
 class BARCOR():
     
-    def __init__(self, seed, kg_dataset, debug, tokenizer_path, context_max_length,
-                 rec_model, conv_model,
-                 resp_max_length):
-        self.seed = seed
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.seed = args.seed
         if self.seed is not None:
             set_seed(self.seed)
-        self.kg_dataset = kg_dataset
+        self.kg_dataset = args.kg_dataset
         
-        self.debug = debug
-        self.tokenizer_path = f"../src/{tokenizer_path}"
+        self.debug = args.debug
+        self.tokenizer_path = f"../src/{args.tokenizer_path}"
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path)
         self.tokenizer.truncation_side = 'left'
-        self.context_max_length = context_max_length
+        self.context_max_length = args.context_max_length
         
         self.padding = 'max_length' 
         self.pad_to_multiple_of = 8 
@@ -35,11 +34,11 @@ class BARCOR():
         self.accelerator = Accelerator(device_placement=False, mixed_precision='fp16')
         self.device = self.accelerator.device 
         
-        self.rec_model = f"../src/{rec_model}"
-        self.conv_model = f"../src/{conv_model}"
+        self.rec_model = f"../src/{args.rec_model}"
+        self.conv_model = f"../src/{args.conv_model}"
         
         # conv
-        self.resp_max_length = resp_max_length
+        self.resp_max_length = args.resp_max_length
         
         self.kg = KGForBART(kg_dataset=self.kg_dataset, debug=self.debug).get_kg_info()
         

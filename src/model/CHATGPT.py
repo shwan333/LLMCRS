@@ -2,6 +2,7 @@ import typing
 import torch
 import json
 import os
+import argparse
 
 import nltk
 import openai
@@ -90,14 +91,13 @@ def annotate_chat(messages, logit_bias=None):
     return response
 
 class CHATGPT():
-    
-    def __init__(self, seed, debug, kg_dataset) -> None:
-        self.seed = seed
-        self.debug = debug
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.seed = args.seed
+        self.debug = args.debug
         if self.seed is not None:
             set_seed(self.seed)
         
-        self.kg_dataset = kg_dataset
+        self.kg_dataset = args.kg_dataset
         
         self.kg_dataset_path = f"../data/{self.kg_dataset}"
         with open(f"{self.kg_dataset_path}/entity2id.json", 'r', encoding="utf-8") as f:

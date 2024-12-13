@@ -1,5 +1,6 @@
 import json
 import torch
+import argparse
 from accelerate import Accelerator
 from accelerate.utils import set_seed
 from transformers import AutoTokenizer, AutoModel
@@ -16,34 +17,32 @@ from src.model.utils import padded_tensor
 
 class UNICRS():
 
-    def __init__(self, seed, kg_dataset, debug, tokenizer_path,
-                 context_max_length, entity_max_length, resp_max_length,
-                 text_tokenizer_path, model, text_encoder, num_bases, rec_model, conv_model):
-        if seed is not None:
-            set_seed(seed)
+    def __init__(self, args: argparse.Namespace) -> None:
+        if args.seed is not None:
+            set_seed(args.seed)
 
-        self.debug = debug
+        self.debug = args.debug
 
         self.accelerator = Accelerator(device_placement=False)
         self.device = self.accelerator.device
 
-        self.context_max_length = context_max_length
-        self.entity_max_length = entity_max_length
-        self.resp_max_length = resp_max_length
+        self.context_max_length = args.context_max_length
+        self.entity_max_length = args.entity_max_length
+        self.resp_max_length = args.resp_max_length
 
         self.padding = 'max_length'
         self.pad_to_multiple_of = 8
         
-        self.tokenizer_path = f"../src/{tokenizer_path}"
-        self.text_tokenizer_path = f"../src/{text_tokenizer_path}"
+        self.tokenizer_path = f"../src/{args.tokenizer_path}"
+        self.text_tokenizer_path = f"../src/{args.text_tokenizer_path}"
         
-        self.text_encoder = f"../src/{text_encoder}"
-        self.model_path = f"../src/{model}"
-        self.rec_model_path = f"../src/{rec_model}"
-        self.conv_model_path = f"../src/{conv_model}"
+        self.text_encoder = f"../src/{args.text_encoder}"
+        self.model_path = f"../src/{args.model}"
+        self.rec_model_path = f"../src/{args.rec_model}"
+        self.conv_model_path = f"../src/{args.conv_model}"
 
         # config
-        gpt2_special_tokens_dict, prompt_special_tokens_dict = get_special_tokens_dict(kg_dataset)
+        gpt2_special_tokens_dict, prompt_special_tokens_dict = get_special_tokens_dict(args.kg_dataset)
         
         # backbone
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path)
@@ -64,7 +63,7 @@ class UNICRS():
         self.text_encoder = self.text_encoder.to(self.device)
 
         # kg prompt
-        self.kg_dataset = kg_dataset
+        self.kg_dataset = args.kg_dataset
         self.kg = KGForUniCRS(kg=self.kg_dataset, debug=self.debug).get_kg_info()
         self.item_ids = torch.as_tensor(self.kg['item_ids'], device=self.device)
         self.kg_dataset_path = f"../data/{self.kg_dataset}"
@@ -72,7 +71,7 @@ class UNICRS():
             self.entity2id = json.load(f)
         self.entity_pad_id = self.kg['pad_entity_id']
 
-        self.num_bases = num_bases
+        self.num_bases = args.num_bases
         # prompt for rec
         self.rec_prompt_encoder = KGPrompt(
             self.model.config.n_embd, self.text_encoder.config.hidden_size, self.model.config.n_head,
@@ -80,7 +79,7 @@ class UNICRS():
             n_entity=self.kg['num_entities'], num_relations=self.kg['num_relations'], num_bases=self.num_bases,
             edge_index=self.kg['edge_index'], edge_type=self.kg['edge_type'],
         )
-        if rec_model is not None:
+        if args.rec_model is not None:
             self.rec_prompt_encoder.load(self.rec_model_path)
         self.rec_prompt_encoder = self.rec_prompt_encoder.to(self.device)
         self.rec_prompt_encoder = self.accelerator.prepare(self.rec_prompt_encoder)
@@ -92,7 +91,7 @@ class UNICRS():
             n_entity=self.kg['num_entities'], num_relations=self.kg['num_relations'], num_bases=self.num_bases,
             edge_index=self.kg['edge_index'], edge_type=self.kg['edge_type'],
         )
-        if conv_model is not None:
+        if args.conv_model is not None:
             self.conv_prompt_encoder.load(self.conv_model_path)
         self.conv_prompt_encoder = self.conv_prompt_encoder.to(self.device)
         self.conv_prompt_encoder = self.accelerator.prepare(self.conv_prompt_encoder)

@@ -1,5 +1,6 @@
 import json
 import torch
+import argparse
 from collections import defaultdict
 
 from accelerate import Accelerator
@@ -16,34 +17,29 @@ from src.model.utils import padded_tensor
 
 class KBRD():
     
-    def __init__(self, seed, kg_dataset, 
-                 debug, hidden_size, entity_hidden_size, num_bases, 
-                 rec_model, conv_model, context_max_length, 
-                 tokenizer_path, encoder_layers, decoder_layers, text_hidden_size, attn_head, 
-                 resp_max_length, entity_max_length,
-                ):
-        self.seed = seed
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.seed = args.seed
         if self.seed is not None:
             set_seed(self.seed)
-        self.kg_dataset = kg_dataset
+        self.kg_dataset = args.kg_dataset
         # model detailed
-        self.debug = debug
-        self.hidden_size = hidden_size
-        self.entity_hidden_size = entity_hidden_size
-        self.num_bases = num_bases
-        self.context_max_length = context_max_length
-        self.entity_max_length = entity_max_length
+        self.debug = args.debug
+        self.hidden_size = args.hidden_size
+        self.entity_hidden_size = args.entity_hidden_size
+        self.num_bases = args.num_bases
+        self.context_max_length = args.context_max_length
+        self.entity_max_length = args.entity_max_length
         # model
-        self.rec_model = f"../src/{rec_model}"
-        self.conv_model = f"../src/{conv_model}"
+        self.rec_model = f"../src/{args.rec_model}"
+        self.conv_model = f"../src/{args.conv_model}"
         # conv
-        self.tokenizer_path = f"../src/{tokenizer_path}"
+        self.tokenizer_path = f"../src/{args.tokenizer_path}"
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path)
-        self.encoder_layers = encoder_layers
-        self.decoder_layers = decoder_layers
-        self.text_hidden_size = text_hidden_size
-        self.attn_head = attn_head
-        self.resp_max_length = resp_max_length
+        self.encoder_layers = args.encoder_layers
+        self.decoder_layers = args.decoder_layers
+        self.text_hidden_size = args.text_hidden_size
+        self.attn_head = args.attn_head
+        self.resp_max_length = args.resp_max_length
         self.padding = 'max_length'
         self.pad_to_multiple_of = 8
             

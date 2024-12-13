@@ -5,6 +5,7 @@ from src.model.KBRD import KBRD
 from src.model.BARCOR import BARCOR
 from src.model.UNICRS import UNICRS
 from src.model.CHATGPT import CHATGPT
+import argparse
 
 name2class = {
     'kbrd': KBRD,
@@ -14,9 +15,10 @@ name2class = {
 }
 
 class RECOMMENDER():
-    def __init__(self, crs_model, *args, **kwargs) -> None:
-        model_class = name2class[crs_model]
-        self.crs_model = model_class(*args, **kwargs)
+    # def __init__(self, crs_model, *args, **kwargs) -> None:
+    def __init__(self, args: argparse.Namespace) -> None:
+        model_class = name2class[args.crs_model]
+        self.crs_model = model_class(args)
         
     def get_rec(self, conv_dict):
         return self.crs_model.get_rec(conv_dict)
