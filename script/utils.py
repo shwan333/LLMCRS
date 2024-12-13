@@ -100,17 +100,6 @@ def get_entity_data(args: argparse.Namespace) -> tuple[dict, list]:
 
     return id2entity, entity_list
 
-def get_dialog_data(args: argparse.Namespace) -> dict:
-    dialog_id2data = {}
-    with open(f'{args.root_dir}/data/{args.dataset}/test_data_processed.jsonl', encoding='utf-8') as f:
-        lines = f.readlines()
-        for line in lines:
-            line = json.loads(line)
-            dialog_id = str(line['dialog_id']) + '_' + str(line['turn_id'])
-            dialog_id2data[dialog_id] = line
-            
-    return dialog_id2data
-
 def process_for_baselines(args: argparse.Namespace, recommender_text: str, id2entity:dict, rec_items:list) -> str:
     # barcor
     if args.crs_model == 'barcor':
