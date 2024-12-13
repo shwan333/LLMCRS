@@ -58,7 +58,7 @@ class my_stop_after_attempt(stop_base):
             retry_state.attempt_number -= 1
         return retry_state.attempt_number >= self.max_attempt_number
 
-def annotate(conv_str):
+def annotate(args: argparse.Namespace, conv_str: str) -> str:
     request_timeout = 6
     for attempt in Retrying(
         reraise=True, retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
@@ -66,13 +66,13 @@ def annotate(conv_str):
     ):
         with attempt:
             response = openai.Embedding.create(
-                model='text-embedding-ada-002', input=conv_str, request_timeout=request_timeout
+                model=args.embedding_model, input=conv_str, request_timeout=request_timeout
             )
         request_timeout = min(30, request_timeout * 2)
 
     return response
 
-def annotate_chat(messages, logit_bias=None):
+def annotate_chat(args: argparse.Namespace, messages: list[dict], logit_bias=None) -> str:
     if logit_bias is None:
         logit_bias = {}
 
@@ -83,7 +83,7 @@ def annotate_chat(messages, logit_bias=None):
     ):
         with attempt:
             response = openai.ChatCompletion.create(
-                model='gpt-3.5-turbo', messages=messages, temperature=0, logit_bias=logit_bias,
+                model=args.rec_model, messages=messages, temperature=0, logit_bias=logit_bias,
                 request_timeout=request_timeout,
             )['choices'][0]['message']['content']
         request_timeout = min(300, request_timeout * 2)
@@ -92,6 +92,7 @@ def annotate_chat(messages, logit_bias=None):
 
 class CHATGPT():
     def __init__(self, args: argparse.Namespace) -> None:
+        self.args = args
         self.seed = args.seed
         self.debug = args.debug
         if self.seed is not None:
@@ -154,7 +155,7 @@ If you have enough information about user preference, you can give recommendatio
         for context in context_list[-2:]:
             conv_str += f"{context['role']}: {context['content']} "
             
-        conv_embed = annotate(conv_str)['data'][0]['embedding']
+        conv_embed = annotate(self.args, conv_str)['data'][0]['embedding']
         conv_embed = np.asarray(conv_embed).reshape(1, -1)
         
         sim_mat = cosine_similarity(conv_embed, self.item_emb_arr)
@@ -187,7 +188,7 @@ If you have enough information about user preference, you can give recommendatio
             })
         
         gen_inputs = None
-        gen_str = annotate_chat(context_list)
+        gen_str = annotate_chat(self.args, context_list)
         
         return gen_inputs, gen_str
     
@@ -198,7 +199,7 @@ If you have enough information about user preference, you can give recommendatio
             if st >= 0:
                 updated_options.append(options[i])
         
-        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        encoding = tiktoken.encoding_for_model(self.args.rec_model)
         logit_bias = {encoding.encode(option)[0]: 10 for option in updated_options}
         
         context = conv_dict['context']
