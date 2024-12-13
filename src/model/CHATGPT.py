@@ -115,7 +115,7 @@ class CHATGPT():
         
         item_emb_list = []
         id2item_id = []
-        for i, file in tqdm(enumerate(os.listdir(self.item_embedding_path))):
+        for i, file in tqdm(enumerate(os.listdir(self.item_embedding_path)), desc="Processing item embeddings"):
             item_id = os.path.splitext(file)[0]
             if item_id in self.id2entityid:
                 id2item_id.append(item_id)
