@@ -65,6 +65,24 @@ class my_stop_after_attempt(stop_base):
         if retry_state.outcome == openai.error.Timeout:
             retry_state.attempt_number -= 1
         return retry_state.attempt_number >= self.max_attempt_number
+    
+def get_exist_dialog_set(save_dir: str) -> set:
+    exist_id_set = set()
+    for file in os.listdir(save_dir):
+        file_id = os.path.splitext(file)[0]
+        exist_id_set.add(file_id)
+    return exist_id_set
+
+def get_dialog_data(args: argparse.Namespace) -> dict:
+    dialog_id2data = {}
+    with open(f'{args.root_dir}/data/{args.dataset}/{args.eval_data_size}_test_data_processed_{args.eval_strategy}.jsonl', encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines:
+            line = json.loads(line)
+            dialog_id = str(line['dialog_id']) + '_' + str(line['turn_id'])
+            dialog_id2data[dialog_id] = line
+            
+    return dialog_id2data
 
 def annotate_completion(args: argparse.Namespace, instruct: str, prompt: str, logit_bias=None) -> str:
     if logit_bias is None:
