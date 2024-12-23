@@ -166,3 +166,22 @@ If the recommender asks for your preference, you should provide the information 
 '''
 
     return recommender_instruction, seeker_instruction_template
+
+def filter_seeker_text(seeker_text: str, goal_item_list: list[str], rec_success: bool) -> str:
+    year_pattern = re.compile(r'\(\d+\)')
+    goal_item_no_year_list = [year_pattern.sub('', rec_item).strip() for rec_item in goal_item_list]
+    
+    seeker_response_no_movie_list = []
+    for sent in nltk.sent_tokenize(seeker_text):
+        use_sent = True
+        for rec_item_str in goal_item_list + goal_item_no_year_list:
+            if fuzz.partial_ratio(rec_item_str.lower(), sent.lower()) > 90: # TODO: 이름만 없애도록 수정
+                use_sent = False
+                break
+        if use_sent is True:
+            seeker_response_no_movie_list.append(sent)
+    seeker_response = ' '.join(seeker_response_no_movie_list)
+    if not rec_success:
+        seeker_response = 'Sorry, ' + seeker_response
+        
+    return seeker_response

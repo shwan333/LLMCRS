@@ -1,29 +1,12 @@
 import argparse
 import copy
 import json
-import os
-import re
-import random
-import time
-import typing
-import warnings
-import tiktoken
-
-import openai
-import nltk
-from loguru import logger
-from thefuzz import fuzz
-from tenacity import Retrying, retry_if_not_exception_type, _utils
-from tenacity.stop import stop_base
-from tenacity.wait import wait_base
-from tqdm import tqdm
-
 import sys
 sys.path.append("..")
 
 from src.model.utils import get_entity
 from src.model.recommender import RECOMMENDER
-from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data
+from utils import annotate_completion, process_for_baselines, filter_seeker_text
 
 def simulate_iEvaLM(dialog_id: str, data: dict, seeker_instruction_template: str, args: argparse.Namespace, recommender: RECOMMENDER, id2entity: dict, entity_list: list, save_dir: str):
     conv_dict = copy.deepcopy(data) # for model
@@ -92,22 +75,8 @@ def simulate_iEvaLM(dialog_id: str, data: dict, seeker_instruction_template: str
         seeker_prompt += f'Recommender: {recommender_text}\n'
         
         # seeker
-        year_pattern = re.compile(r'\(\d+\)')
-        goal_item_no_year_list = [year_pattern.sub('', rec_item).strip() for rec_item in goal_item_list]
         seeker_text = annotate_completion(args, seeker_instruct, seeker_prompt).strip()
-        
-        seeker_response_no_movie_list = []
-        for sent in nltk.sent_tokenize(seeker_text):
-            use_sent = True
-            for rec_item_str in goal_item_list + goal_item_no_year_list:
-                if fuzz.partial_ratio(rec_item_str.lower(), sent.lower()) > 90: # TODO: 이름만 없애도록 수정
-                    use_sent = False
-                    break
-            if use_sent is True:
-                seeker_response_no_movie_list.append(sent)
-        seeker_response = ' '.join(seeker_response_no_movie_list)
-        if not rec_success:
-            seeker_response = 'Sorry, ' + seeker_response
+        seeker_response = filter_seeker_text(seeker_text, goal_item_list, rec_success)
         seeker_prompt += f' {seeker_response}\n'
         
         # public
