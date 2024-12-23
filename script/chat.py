@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--kg_dataset', type=str, choices=['redial', 'opendialkg'])
     parser.add_argument('--resp_max_length', type=int)
-    parser.add_argument('--batch_inference', action='store_true')
+    parser.add_argument('--mp_inference', action='store_true')
     parser.add_argument('--inference_batch_size', action='store_true')
     parser.add_argument('--batch_size', type=int, default=64)
     # remove argument for conventional CRS (refer to iEVALM official repository)
@@ -70,14 +70,13 @@ if __name__ == '__main__':
     dialog_id2data = get_dialog_data(args)
     dialog_id_set = set(dialog_id2data.keys()) - get_exist_dialog_set(save_dir)
     dialog_id_list = list(dialog_id_set)
-    if args.batch_inference:
+    if args.mp_inference:
         processes = []
     for dialog_id in tqdm(dialog_id_list, desc="Processing Dialogs"):
         data = dialog_id2data[dialog_id]
-        if not args.batch_inference:
+        if not args.mp_inference:
             simulate_iEvaLM(dialog_id, data, seeker_instruction_template, args, recommender, id2entity, entity_list, save_dir)
         else:
-            # print(args.batch_inference)
             try:
                 p = Process(target=simulate_iEvaLM, 
                             args=(dialog_id, data, seeker_instruction_template, args, recommender, id2entity, entity_list, save_dir))
