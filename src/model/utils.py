@@ -6,10 +6,61 @@ import torch
 from rapidfuzz import fuzz, process
 from torch import nn
 from torch.nn import functional as F
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 special_tokens_dict = {
     'pad_token': '<|pad|>'
 }
+
+def get_model_path():
+    model_path = {
+            'Llama-3.1-8B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659',
+            'Llama-3.2-3B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--meta-llama--Llama-3.2-3B-Instruct/snapshots/392a143b624368100f77a3eafaa4a2468ba50a72',
+            'Llama-3.2-1B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--meta-llama--Llama-3.2-1B-Instruct/snapshots/9213176726f574b556790deb65791e0c5aa438b6',
+            'Qwen2.5-1.5B-Instruct':'/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306',
+            'Qwen2.5-3B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1',
+            'Qwen2.5-7B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/bb46c15ee4bb56c5b63245ef50fd7637234d6f75',
+            'Qwen2.5-14B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-14B-Instruct/snapshots/cf98f3b3bbb457ad9e2bb7baf9a0125b6b88caa8',
+        }
+    
+    return model_path
+
+def get_model_list():
+    model_path = get_model_path()
+    model_list = []
+    for server in model_path.keys():
+        for model in model_path[server].keys():
+            model_list.append(model)
+    
+    return model_list
+
+def LLM_model_load(args):
+
+    model_path = get_model_path()
+    
+    # LLM load 
+    generation_model_id = model_path[args.rec_model]
+    
+    if generation_model_id != None:
+        generation_model_tokenizer = AutoTokenizer.from_pretrained(generation_model_id, padding_side='left')
+        generation_model = AutoModelForCausalLM.from_pretrained(
+            generation_model_id,
+            torch_dtype=torch.bfloat16,
+            device_map=args.device,
+        )
+        generation_model_tokenizer.pad_token = generation_model_tokenizer.eos_token
+        generation_model.generation_config.pad_token_id = generation_model_tokenizer.pad_token_id
+        generation_model_terminators = [
+            generation_model_tokenizer.eos_token_id,
+            # system_tokenizer.convert_tokens_to_ids("<|eot_id|>")
+        ]
+        base_generation_LLM = {
+            'model': generation_model,
+            'tokenizer': generation_model_tokenizer,
+            'terminators': generation_model_terminators,
+        }
+    
+    return base_generation_LLM
 
 def load_jsonl_data(file):
     data_list = []

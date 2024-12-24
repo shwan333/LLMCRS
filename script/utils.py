@@ -8,7 +8,7 @@ import time
 import typing
 import warnings
 import tiktoken
-
+import asyncio
 import openai
 import nltk
 from loguru import logger
@@ -19,9 +19,6 @@ from tenacity.wait import wait_base
 
 import sys
 sys.path.append("..")
-
-from src.model.utils import get_entity
-from src.model.recommender import RECOMMENDER
 
 warnings.filterwarnings('ignore')
 
@@ -106,6 +103,40 @@ def annotate_completion(args: argparse.Namespace, instruct: str, prompt: str, lo
         request_timeout = min(300, request_timeout * 2)
 
     return response
+
+def annotate_batch_completion(args: argparse.Namespace, instruct_list: list[str], prompt_list: list[str], logit_bias=None) -> str:
+    async def fetch_chat_completion(args, messages, logit_bias):
+        request_timeout = 60
+        for attempt in Retrying(
+            reraise=True,
+            retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+            wait=my_wait_exponential(min=1, max=60),
+            stop=(my_stop_after_attempt(8)),
+            before_sleep=my_before_sleep
+        ):
+            with attempt:
+                response = openai.ChatCompletion.create(
+                    model= args.user_model, messages= messages, temperature= 0, max_tokens= 128, request_timeout=request_timeout,
+                )['choices'][0]['message']['content']
+            request_timeout = min(300, request_timeout * 2)
+        return response
+    
+    async def main_async(prompts):
+        tasks = [fetch_chat_completion(args, prompt, logit_bias) for prompt in prompts]
+        results = await asyncio.gather(*tasks)
+        return results
+
+    # Execute all API calls concurrently
+    messages_list = []
+    for idx, instruct in enumerate(instruct_list):
+        prompt = prompt_list[idx] + '''
+            #############
+        '''
+        messages = [{'role': 'system', 'content': instruct}, {'role': 'user', 'content': prompt}]
+        messages_list.append(messages)
+    responses = asyncio.run(main_async(messages_list))
+    
+    return responses
 
 def get_entity_data(args: argparse.Namespace) -> tuple[dict, list]:
     with open(f'{args.root_dir}/data/{args.kg_dataset}/entity2id.json', 'r', encoding="utf-8") as f: # TODO: 1) 이해하기 쉽게 수정 및 2) hard coding 없애기
