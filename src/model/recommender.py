@@ -28,6 +28,9 @@ class RECOMMENDER():
     def get_conv(self, conv_dict):
         return self.crs_model.get_conv(conv_dict)
     
+    def get_sample_conv(self, conv_dict):
+        return self.crs_model.get_sample_conv(conv_dict)
+    
     def get_choice(self, gen_inputs, option, state, conv_dict=None):
         return self.crs_model.get_choice(gen_inputs, option, state, conv_dict)
     
