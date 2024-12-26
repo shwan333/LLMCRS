@@ -172,14 +172,26 @@ If you have enough information about user preference, you can give recommendatio
             return_tensors="pt"
         ).to(args.device)
 
+        # outputs = self.model.generate(
+        #     input_ids,
+        #     num_beams = args.beam_num,
+        #     num_return_sequences = args.beam_num,
+        #     max_new_tokens=args.resp_max_length,
+        #     eos_token_id=self.tokenizer.eos_token_id,
+        #     pad_token_id=self.tokenizer.eos_token_id,
+        #     do_sample=False,
+        #     temperature=args.temperature,
+        #     top_p=1.0,
+        #     early_stopping=False  # 모든 빔이 EOS에 도달하면 조기 종료
+        # )
+        
         outputs = self.model.generate(
             input_ids,
-            num_beams = args.beam_num,
             num_return_sequences = args.beam_num,
             max_new_tokens=args.resp_max_length,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.eos_token_id,
-            do_sample=False,
+            do_sample=True,
             temperature=args.temperature,
             top_p=1.0,
             early_stopping=False  # 모든 빔이 EOS에 도달하면 조기 종료

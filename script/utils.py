@@ -11,6 +11,8 @@ import tiktoken
 import asyncio
 import openai
 import nltk
+import numpy as np
+import torch
 from loguru import logger
 from thefuzz import fuzz
 from tenacity import Retrying, retry_if_not_exception_type, _utils
@@ -98,7 +100,7 @@ def annotate_completion(args: argparse.Namespace, instruct: str, prompt: str, lo
     ):
         with attempt:
             response = openai.ChatCompletion.create(
-                model= args.user_model, messages= messages, temperature= 0, max_tokens= 128, request_timeout=request_timeout,
+                model= args.user_model, messages= messages, temperature= 0, max_tokens= 128, request_timeout=request_timeout, seed = args.seed
             )['choices'][0]['message']['content']
         request_timeout = min(300, request_timeout * 2)
 
@@ -178,7 +180,7 @@ def get_instruction(dataset):
         recommender_instruction = '''You are a recommender chatting with the user to provide recommendation. You must follow the instructions below during chat.
 If you do not have enough information about user preference, you should ask the user for his preference.
 If you have enough information about user preference, you can give recommendation.'''
-        seeker_instruction_template = '''You are a seeker chatting with a recommender for recommendation. Your target items: {}. You must follow the instructions below during chat.
+        seeker_instruction_template = '''You are a seeker chatting with a recommender for recommendation. Your target items: {}. You must provide you next utterance based on given conversation. You must follow the instructions below during chat.
 If the recommender recommend {}, you should accept.
 If the recommender recommend other items, you should refuse them and provide the information about {}. You should never directly tell the target item title.
 If the recommender asks for your preference, you should provide the information about {}. You should never directly tell the target item title.
@@ -189,7 +191,7 @@ If the recommender asks for your preference, you should provide the information 
 If you do not have enough information about user preference, you should ask the user for his preference.
 If you have enough information about user preference, you can give recommendation.'''
         
-        seeker_instruction_template = '''You are a seeker chatting with a recommender for recommendation. Your target items: {}. You must follow the instructions below during chat.
+        seeker_instruction_template = '''You are a seeker chatting with a recommender for recommendation. Your target items: {}. You must provide you next utterance based on given conversation. You must follow the instructions below during chat.
 If the recommender recommend {}, you should accept.
 If the recommender recommend other items, you should refuse them and provide the information about {}. You should never directly tell the target item title.
 If the recommender asks for your preference, you should provide the information about {}. You should never directly tell the target item title.
@@ -216,3 +218,12 @@ def filter_seeker_text(seeker_text: str, goal_item_list: list[str], rec_success:
         seeker_response = 'Sorry, ' + seeker_response
         
     return seeker_response
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # 멀티 GPU를 사용하는 경우
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False

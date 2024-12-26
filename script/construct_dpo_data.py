@@ -24,7 +24,7 @@ sys.path.append("..")
 
 from src.model.utils import get_entity
 from src.model.recommender import RECOMMENDER
-from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data
+from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data, set_seed
 from simulate import construct_DPO_data
 
 warnings.filterwarnings('ignore')
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     openai.api_key = secret_data['openai']
     save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_data' 
     os.makedirs(save_dir, exist_ok=True)
-    random.seed(args.seed)
+    set_seed(args.seed)
     
     # recommender
     recommender = RECOMMENDER(args)
