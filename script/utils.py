@@ -74,7 +74,7 @@ def get_exist_dialog_set(save_dir: str) -> set:
 
 def get_dialog_data(args: argparse.Namespace) -> dict:
     dialog_id2data = {}
-    with open(f'{args.root_dir}/data/{args.dataset}/{args.eval_data_size}_test_data_processed_{args.eval_strategy}.jsonl', encoding='utf-8') as f:
+    with open(f'{args.root_dir}/data/{args.dataset}/{args.eval_data_size}_{args.split}_data_processed_{args.eval_strategy}.jsonl', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
             line = json.loads(line)

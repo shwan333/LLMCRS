@@ -51,6 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpu_id', type=int, default=0)
     parser.add_argument('--temperature', type=float, default=1.5)
     parser.add_argument('--beam_num', type=int, default=32)
+    parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test'])
     # remove argument for conventional CRS (refer to iEVALM official repository)
     
     args = parser.parse_args()
