@@ -247,6 +247,49 @@ If you have enough information about user preference, you can give recommendatio
         
         return responses
     
+    def annotate_sample_batch_chat(self, args: argparse.Namespace, messages_list: list[list[dict]], logit_bias=None) -> str:
+        formatted_messages_list = self.tokenizer.apply_chat_template(
+            messages_list,
+            tokenize=False,
+            add_generation_prompt=True,
+            padding = True,
+        )
+            
+        # Tokenize without padding first to find max length
+        encodings = [self.tokenizer.encode(text) for text in formatted_messages_list]
+        max_length = max(len(encoding) for encoding in encodings)
+            
+        input_ids = self.tokenizer(
+            formatted_messages_list,
+            padding="max_length",
+            truncation=True,
+            max_length=max_length,
+            return_tensors="pt",
+            return_attention_mask=True,
+            return_token_type_ids=False,
+        ).to(args.device)
+
+        outputs = self.model.generate(
+            **input_ids,
+            num_return_sequences = args.beam_num,
+            max_new_tokens=args.resp_max_length,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id = self.tokenizer.eos_token_id,
+            do_sample = True,
+            temperature=args.temperature,
+            top_p = 1.0,
+            early_stopping=False,
+            min_length = -1, # 얘만 원래 없음.
+            top_k = 0.0, # 얘만 다름.
+        )
+
+        responses = []
+        for idx in range(outputs.shape[0]):
+            response = self.tokenizer.decode(outputs[idx][input_ids['input_ids'].shape[-1]:], skip_special_tokens=True)
+            responses.append(response.strip())
+        
+        return responses
+    
     def get_rec(self, conv_dict):
         
         rec_labels = [self.entity2id[rec] for rec in conv_dict['rec'] if rec in self.entity2id]
@@ -401,5 +444,34 @@ If you have enough information about user preference, you can give recommendatio
             gen_inputs = None
             context_list_list.append(context_list)
         gen_str_list = self.annotate_batch_chat(self.args, context_list_list)
+        
+        return gen_inputs, gen_str_list
+    
+    def get_sample_batch_conv(self, conv_dict_list) -> list[str]:
+        
+        context_list_list = []
+        for conv_dict in conv_dict_list:
+            context = conv_dict['context']
+            context_list = [] # for model
+            context_list.append({
+                'role': 'system',
+                'content': self.chat_recommender_instruction
+            })
+            
+            for i, text in enumerate(context):
+                if len(text) == 0:
+                    continue
+                if i % 2 == 0:
+                    role_str = 'user'
+                else:
+                    role_str = 'assistant'
+                context_list.append({
+                    'role': role_str,
+                    'content': text
+                })
+            
+            gen_inputs = None
+            context_list_list.append(context_list)
+        gen_str_list = self.annotate_sample_batch_chat(self.args, context_list_list)
         
         return gen_inputs, gen_str_list

@@ -5,11 +5,13 @@ import sys
 import random
 import os
 import numpy as np
+from multiprocessing import Process
+import time
 sys.path.append("..")
 
 from src.model.utils import get_entity
 from src.model.recommender import RECOMMENDER
-from utils import annotate_completion, annotate_batch_completion, process_for_baselines, filter_seeker_text
+from utils import annotate_completion, annotate_batch_completion, process_for_baselines, filter_seeker_text, convert_1d_to_2d
 from turn_level_preference_check import get_dialog_emb
 from preference_utils import cosine_similarity, batch_cosine_similarity
 
@@ -215,6 +217,9 @@ def construct_DPO_data(dialog_id: str, data: dict, seeker_instruction_template: 
         # 6. max와 min을 구하고, 이를 각기 chosen과 rejected로 지정한다.
         # 7. 지정된 저장위치에 {chosen: [dialogue], rejected: [dialogue], chosen_score: [preference score], rejected_score:[preference score]}의 형태로 저장한다.
         
+        # TODO: 여러번 호출하는 부분 없애고, 한번 호출하고, 그 결과를 저장하는 방식으로 수정
+        # TODO: matrix_multiplication으로 바꾸어 speed 높이기.
+        # TODO: numpy에서 pytorch로 바꾸기.
         base_dialog_emb = get_dialog_emb(context_dict_list[0][:-2], args.embedding_model)
         target_item_title = conv_dict['rec'][0] # TODO: 여러 개의 target item을 고려할 수 있도록 수정
         target_item_emb = title2emb[target_item_title]
@@ -314,7 +319,7 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
         # Time for recommender 
         # recommendation
         print(f'Get recommendation')
-        rec_items_list, rec_labels_list = recommender.get_batch_rec(conv_dict_list) # TODO: OPEN_MODEL.py에서 구현
+        rec_items_list, rec_labels_list = recommender.get_batch_rec(conv_dict_list)
         
         # check if rec success
         for idx, rec_labels in enumerate(rec_labels_list):
@@ -326,7 +331,7 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
                 
         # conversation
         print(f'Get conversation')
-        _, recommender_text_list = recommender.get_batch_conv(conv_dict_list) # TODO: OPEN_MODEL.py에서 구현
+        _, recommender_text_list = recommender.get_batch_conv(conv_dict_list)
         
         # post-process for conversation
         for idx, rec_success in enumerate(rec_success_list):
@@ -425,3 +430,251 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
     # # save
     # with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
     #     json.dump(data, f, ensure_ascii=False, indent=2)
+    
+def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], data_list: list[dict], save_dir: str, each_context_dict_list: list[dict], 
+                  conv_dict_list: list[dict], item_embeddings: np.ndarray, idx: int, title2emb: dict, each_turn: int):
+    base_dialog_emb = get_dialog_emb(each_context_dict_list[0][:-2], args.embedding_model)
+    target_item_title = conv_dict_list[idx]['rec'][0] # TODO: 여러 개의 target item을 고려할 수 있도록 수정
+    target_item_emb = title2emb[target_item_title]
+    all_similarities = batch_cosine_similarity(base_dialog_emb, item_embeddings)
+    # print(all_similarities)
+    mean_similarity = np.mean(all_similarities)
+    base_sim = cosine_similarity(base_dialog_emb, target_item_emb) - mean_similarity
+
+    # TODO: maxtrix multiplication 연산으로 바꾸어 speed 높이기.
+    diff_sim_list = []
+    for each_context_dict in each_context_dict_list:
+        dialog_emb = get_dialog_emb(each_context_dict, args.embedding_model)
+        all_similarities = batch_cosine_similarity(dialog_emb, item_embeddings)
+        mean_similarity = np.mean(all_similarities)
+        sim = cosine_similarity(dialog_emb, target_item_emb) - mean_similarity
+        diff_sim = sim - base_sim
+        diff_sim_list.append(diff_sim)
+    
+    max_idx = np.argmax(diff_sim_list)
+    min_idx = np.argmin(diff_sim_list)
+    
+    pos_dialog = each_context_dict_list[max_idx]
+    neg_dialog = each_context_dict_list[min_idx]
+    pos_score = diff_sim_list[max_idx]
+    neg_score = diff_sim_list[min_idx]
+    
+    for dialog in [pos_dialog, neg_dialog]:
+        for i, context_dict_element in enumerate(dialog):
+            for key in list(context_dict_element.keys()):
+                if key not in ['role', 'content']:
+                    context_dict_element.pop(key)
+    
+    # save chosen and rejected
+    save_data = {
+        'chosen': pos_dialog,
+        'rejected': neg_dialog,
+        'chosen_score': pos_score,
+        'rejected_score': neg_score
+    }
+    
+    # save
+    with open(f'{save_dir}/{dialog_id_list[idx]}_{each_turn}.json', 'w', encoding='utf-8') as f: 
+        json.dump(save_data, f, ensure_ascii=False, indent=2)
+
+def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], seeker_instruction_template: str, args: argparse.Namespace, recommender: RECOMMENDER, id2entity: dict, entity_list: list, save_dir: str):
+    print("=====================================")
+    print(dialog_id_list)
+    start_time = time.time()
+    emb_file_path = f"{args.root_dir}/data/{args.dataset}/title2emb_{args.embedding_model}.json"
+    if os.path.exists(emb_file_path):
+        with open(emb_file_path, "r") as f:
+            title2emb = json.load(f)
+    item_embeddings = np.stack(list(title2emb.values()))
+    
+    conv_dict_list = [] 
+    context_dict_list = []
+    rec_success_list = [False] * len(dialog_id_list)
+    seeker_prompt_list = []
+    
+    goal_item_list_list = [] 
+    seeker_instruct_list = []
+    
+    for idx, dialog_id in enumerate(dialog_id_list):
+        conv_dict = copy.deepcopy(data_list[idx]) # for model
+        context = conv_dict['context']
+
+        goal_item_list = [f'"{item}"' for item in conv_dict['rec']]
+        goal_item_str = ', '.join(goal_item_list)
+        seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
+        seeker_prompt = '''
+            Conversation History
+            #############
+        '''
+        context_dict = [] # for save
+
+        for i, text in enumerate(context):
+            if len(text) == 0:
+                continue
+            if i % 2 == 0:
+                role_str = 'user'
+                seeker_prompt += f'Seeker: {text}\n'
+            else:
+                role_str = 'assistant'
+                seeker_prompt += f'Recommender: {text}\n'
+            context_dict.append({
+                'role': role_str,
+                'content': text
+            })
+        seeker_prompt_list.append(seeker_prompt)
+        conv_dict_list.append(conv_dict)
+        context_dict_list.append(context_dict)
+        seeker_instruct_list.append(seeker_instruct)
+        goal_item_list_list.append(goal_item_list)
+
+
+    # 1. 매 턴에서의 chosen과 rejected를 구분하여 저장
+    # 2. next convdict를 생성하는 것
+    print(f'initialization_time: {time.time() - start_time}s')
+    for each_turn in range(0, args.turn_num):
+        print(f"Turn {each_turn}")
+        start_time = time.time()
+        # for current turn DPO data construction
+        current_turn_context_dict_list = []
+        current_turn_seeker_prompt_list = []
+        current_turn_seeker_instruct_list = []
+        for i in range(len(context_dict_list)):
+            for j in range(args.beam_num):
+                current_turn_context_dict_list.append(copy.deepcopy(context_dict_list[i]))
+                current_turn_seeker_prompt_list.append(copy.deepcopy(seeker_prompt_list[i]))
+                current_turn_seeker_instruct_list.append(copy.deepcopy(seeker_instruct_list[i]))
+        # Recommendation
+        rec_items_list, rec_labels_list = recommender.get_batch_rec(conv_dict_list)
+        
+        # check if rec success
+        for idx, rec_labels in enumerate(rec_labels_list):
+            for rec_label in rec_labels:
+                if rec_label in rec_items_list[idx][0]:
+                    rec_success_list[idx] = True
+                    break
+        del rec_labels_list
+            
+        # Conversation
+        _, recommender_text_list = recommender.get_sample_batch_conv(conv_dict_list) # length = batch_size * sample_size (beam_num)
+        
+        # post-process
+        print(len(dialog_id_list), len(recommender_text_list))
+        resized_recommender_text_list = convert_1d_to_2d(recommender_text_list, len(dialog_id_list), len(recommender_text_list) // len(dialog_id_list))
+        random_index = random.choice(list(range(len(dialog_id_list))))
+        save_recommender_text_list = [resized_recommender_text_list[idx][random_index] for idx in range(len(resized_recommender_text_list))]
+        
+        for idx, rec_success in enumerate(rec_success_list):
+            conv_dict_list[idx]['context'].append(save_recommender_text_list[idx])
+            context_dict_list[idx].append({
+                'role': 'assistant',
+                'content': save_recommender_text_list[idx],
+                'rec_items': rec_items_list[idx][0],
+                'rec_success': rec_success
+            })
+            seeker_prompt_list[idx] += f'Recommender: {save_recommender_text_list[idx]}\n'
+        del rec_items_list    
+        del save_recommender_text_list
+        
+        # Seeker Response
+        seeker_text_list = annotate_batch_completion(args, seeker_instruct_list, seeker_prompt_list)
+        
+        # post-process
+        for idx, seeker_text in enumerate(seeker_text_list):
+            seeker_response = filter_seeker_text(seeker_text, goal_item_list_list[idx], rec_success_list[idx])
+        
+            context_dict_list[idx].append({
+                'role': 'user',
+                'content': seeker_text,
+            })
+            conv_dict_list[idx]['context'].append(seeker_text)
+            seeker_prompt_list[idx] += f' {seeker_response}\n'
+        
+        print(f'each_turn_time: {time.time() - start_time}s')
+        start_time = time.time()
+        # DPO data construction
+        assert len(current_turn_context_dict_list) == len(recommender_text_list)
+        for idx in range(len(current_turn_context_dict_list)):
+            current_turn_context_dict_list[idx].append({
+                'role': 'assistant',
+                'content': recommender_text_list[idx],
+            })
+            
+        seeker_text_list = annotate_batch_completion(args, current_turn_seeker_instruct_list, current_turn_seeker_prompt_list)
+        for idx in range(len(current_turn_context_dict_list)):
+            current_turn_context_dict_list[idx].append({
+                'role': 'user',
+                'content': seeker_text_list[idx],
+            })
+        
+        processes = []
+        for idx in range(len(context_dict_list)):
+            each_context_dict_list = current_turn_context_dict_list[args.beam_num * idx: args.beam_num * (idx + 1)]
+            p = Process(target=save_dpo_data,
+                        args=(args, dialog_id_list, data_list, save_dir, each_context_dict_list, conv_dict_list, item_embeddings, idx, title2emb, each_turn))
+            p.start()
+            processes.append(p)
+        for p in processes:
+            p.join()
+        print(f'dpo_data_construction&save: {time.time() - start_time}s')
+            # base_dialog_emb = get_dialog_emb(each_context_dict_list[0][:-2], args.embedding_model)
+            # target_item_title = conv_dict_list[idx]['rec'][0] # TODO: 여러 개의 target item을 고려할 수 있도록 수정
+            # target_item_emb = title2emb[target_item_title]
+            # all_similarities = batch_cosine_similarity(base_dialog_emb, item_embeddings)
+            # # print(all_similarities)
+            # mean_similarity = np.mean(all_similarities)
+            # base_sim = cosine_similarity(base_dialog_emb, target_item_emb) - mean_similarity
+        
+            # diff_sim_list = []
+            # for each_context_dict in each_context_dict_list:
+            #     dialog_emb = get_dialog_emb(each_context_dict, args.embedding_model)
+            #     all_similarities = batch_cosine_similarity(dialog_emb, item_embeddings)
+            #     mean_similarity = np.mean(all_similarities)
+            #     sim = cosine_similarity(dialog_emb, target_item_emb) - mean_similarity
+            #     diff_sim = sim - base_sim
+            #     diff_sim_list.append(diff_sim)
+            
+            # max_idx = np.argmax(diff_sim_list)
+            # min_idx = np.argmin(diff_sim_list)
+            
+            # pos_dialog = each_context_dict_list[max_idx]
+            # neg_dialog = each_context_dict_list[min_idx]
+            # pos_score = diff_sim_list[max_idx]
+            # neg_score = diff_sim_list[min_idx]
+            
+            # for dialog in [pos_dialog, neg_dialog]:
+            #     for i, context_dict_element in enumerate(dialog):
+            #         for key in list(context_dict_element.keys()):
+            #             if key not in ['role', 'content']:
+            #                 context_dict_element.pop(key)
+            
+            # # save chosen and rejected
+            # save_data = {
+            #     'chosen': pos_dialog,
+            #     'rejected': neg_dialog,
+            #     'chosen_score': pos_score,
+            #     'rejected_score': neg_score
+            # }
+            
+            # # save
+            # with open(f'{save_dir}/{dialog_id_list[idx]}_{each_turn}.json', 'w', encoding='utf-8') as f: 
+            #     json.dump(save_data, f, ensure_ascii=False, indent=2)
+            
+        # Turn Stop
+        if rec_success == True or each_turn == args.turn_num - 1:
+            removal_dialog_id_list = []
+            for dialog_id in dialog_id_list:
+                idx = dialog_id_list.index(dialog_id)
+                if rec_success_list[idx]:
+                    removal_dialog_id_list.append(dialog_id)
+            
+            for delete_dialog_id in removal_dialog_id_list:
+                idx = dialog_id_list.index(delete_dialog_id)
+                target_lists = [dialog_id_list, data_list, conv_dict_list, context_dict_list, seeker_instruct_list, rec_success_list, seeker_prompt_list, goal_item_list_list]
+                for target_list in target_lists:
+                    target_list.pop(idx)
+                    
+            assert len(dialog_id_list) == len(data_list) == len(conv_dict_list) == len(context_dict_list) \
+                == len(seeker_instruct_list) == len(rec_success_list) == len(seeker_prompt_list) == len(goal_item_list_list)
+        
+        if len(dialog_id_list) == 0:
+            break
