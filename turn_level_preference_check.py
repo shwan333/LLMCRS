@@ -60,43 +60,64 @@ def get_dialog_emb(dialog: dict, embedding_model: str):
     
     return dialog_emb
 
-def save_turn_level_preference(sample_result_path, result_dict: dict):
-    instance_name = sample_result_path.split('/')[-1].split('.')[0]
-    dialog_id = instance_name
+def save_turn_level_preference(sample_result_path, result_dict: dict, args):
     sample_result = json.load(open(sample_result_path))
     target_item_title = sample_result['rec'][0]
     target_item_emb = title2emb[target_item_title]
-    dialog_id_list.append(dialog_id)
+    target_item_emb = torch.tensor(target_item_emb, device = args.device)
     
     id, additional_turn = get_additional_turn_num(sample_result_path)
-
     _, rec_success, _ = get_result(sample_result_path)
+    
     dialogs = slice_dialogue(sample_result_path, int(additional_turn))
     dialog_embeddings = [get_dialog_emb(dialog, embedding_model) for dialog in dialogs]
-    local_result = []        
-    for idx, dialog_emb in enumerate(dialog_embeddings):
-        title2sim = {}
-        for title, item_emb in title2emb.items():
-            title2sim[title] = cosine_similarity(dialog_emb, item_emb)
+    dialog_embeddings = torch.tensor(dialog_embeddings, device = args.device) # (additional_turn + 1) * H
+    
+    all_item_embs = torch.tensor(list(title2emb.values()), device = args.device) # item_num * H
+    
+    sims = torch.matmul(dialog_embeddings, target_item_emb)
+    dialog_norm = torch.norm(dialog_embeddings, dim = 1)
+    target_norm = torch.norm(target_item_emb)
+    cosine_sims = sims / (dialog_norm * target_norm)
+    
+    all_sims = torch.matmul(dialog_embeddings, all_item_embs.T)
+    all_item_norm = torch.norm(all_item_embs, dim = 1)
+    all_cosine_sim = all_sims / torch.outer(dialog_norm, all_item_norm)
+    
+    dot_WAR = sims - torch.mean(all_sims, dim = 1)
+    topK_sims, _ = torch.topk(all_sims, 100)
+    dot_topK_WAR = sims - torch.mean(topK_sims, dim = 1)
+    
+    cosine_WAR = cosine_sims - torch.mean(all_cosine_sim, dim = 1)
+    topK_cosine_sims, _ = torch.topk(all_cosine_sim, 100)
+    cosine_topK_WAR = cosine_sims - torch.mean(topK_cosine_sims, dim = 1)
+    
+    probabilities = torch.exp(all_sims)
+    total = torch.sum(probabilities, dim = 1)
+    probabilities = probabilities / total.unsqueeze(1)
+    entropies = -torch.sum(probabilities * torch.log(probabilities), dim = 1)
+    
+    local_result = []
+    for idx, _ in enumerate(dialogs):
 
-        dot_sim = dot_product_similarity(dialog_emb, target_item_emb)
-        rank = calculate_rank(list(title2sim.values()), title2sim[target_item_title])
-        softmax_value = softmax(list(title2sim.values()), title2sim[target_item_title])
-        cosine_sim = cosine_similarity(dialog_emb, target_item_emb)
-        consine_sim_above_avg = cosine_sim - np.mean(list(title2sim.values()))
-        hyperbolic_sim = hyperbolic_tangent(dialog_emb, target_item_emb)
-        entropy = calculate_entropy(list(title2sim.values()))
+        dot_sim = sims[idx].item()
+        dot_sim_above_avg = dot_WAR[idx].item()
+        dot_sim_above_topK_avg = dot_topK_WAR[idx].item()
+        cosine_sim = cosine_sims[idx].item()
+        cosine_sim_above_avg = cosine_WAR[idx].item()
+        cosine_sim_above_topK_avg = cosine_topK_WAR[idx].item()
+        entropy = entropies[idx].item()
         
         local_result.append({
             'turn': idx,
             'dot_sim': dot_sim,
-            'rec_success': rec_success,
-            'cosine_sim': round(cosine_sim, 4),
-            'consine_sim_above_avg': round(consine_sim_above_avg, 4),
-            'hyperbolic_sim': round(hyperbolic_sim, 4),
-            'softmax_value': softmax_value,
-            'rank': rank,
+            'dot_sim_above_avg': dot_sim_above_avg,
+            'dot_sim_above_topK_avg': dot_sim_above_topK_avg,
+            'cosine_sim': cosine_sim,
+            'cosine_sim_above_avg': cosine_sim_above_avg,
+            'cosine_sim_above_topK_avg': cosine_sim_above_topK_avg,
             'entropy': entropy,
+            'rec_success': rec_success,
         })
     result_dict[id] = local_result
 
@@ -111,20 +132,14 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', default = 'opendialkg_eval', type=str, choices=['opendialkg_eval', 'redial_eval'])
     parser.add_argument('--topK', default = 10, type=int)
     parser.add_argument('--history', default = 'full', type=str)
+    parser.add_argument('--gpu_id', default = 0, type=int)
+    parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
+    parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
+    parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test'])
+    
     args = parser.parse_args()
     args.kg_dataset = args.dataset.split('_')[0]
-
-    # base_LLM = 'my_ppo_merge_0_11-14-08-51'
-    # base_LLM = 'Qwen2.5-14B-Instruct'
-    # base_LLM = 'Llama-3.2-1B-Instruct'
-    # base_LLM = "Llama-3.1-8B-Instruct"
-    # base_LLM = 'gpt4o-mini'
-    # planning_LLM = "gpt4o-mini"
-    eval_data_size = 'full'
-    eval_strategy = 'non_repeated'
-    # dataset = 'opendialkg'
-    # dataset = 'redial'
-    split = 'test'
+    args.device = f"cuda:{args.gpu_id}"
     root_dir = os.getcwd()
     
     with open (f"{root_dir}/secret/api.json", "r") as f:
@@ -144,7 +159,7 @@ if __name__ == '__main__':
     metric = "cosine"
     embedding_model = "text-embedding-3-small"
             
-    folder_path = f"{root_dir}/save_5/chat/{args.model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{eval_data_size}_{eval_strategy}"
+    folder_path = f"{root_dir}/save_5/chat/{args.model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}"
     print(f'Target folder: {folder_path}')
 
     # Get data for success result for each beam
@@ -176,7 +191,6 @@ if __name__ == '__main__':
         emb_file_path = f"{root_dir}/data/{args.dataset}/title2emb_{embedding_model}.json"
         json.dump(title2emb, open(emb_file_path, "w"))
 
-    dialog_id_list = []
     threads = []
     processes = []
     
@@ -184,7 +198,7 @@ if __name__ == '__main__':
         shared_dict = manager.dict()  # Create a shared dictionary
 
         for sample_result_path in tqdm(results_path):
-            p = Process(target=save_turn_level_preference, args=(sample_result_path, shared_dict,))
+            p = Process(target=save_turn_level_preference, args=(sample_result_path, shared_dict, args))
             p.start()
             processes.append(p)
             if len(processes) == 32:
@@ -197,5 +211,5 @@ if __name__ == '__main__':
                 p.join()
         
         result_dict = dict(shared_dict)
-        with open(f'{root_dir}/preference_data/turn_level_preference_{args.model}_{args.dataset}_{eval_data_size}_{eval_strategy}.json', 'w') as f:
+        with open(f'{root_dir}/preference_data/turn_level_preference_{args.model}_{args.rec_model}_top{args.topK}_{args.history}_history_{args.dataset}_{args.eval_data_size}_{args.eval_strategy}.json', 'w') as f:
             json.dump(result_dict, f)
