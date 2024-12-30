@@ -20,7 +20,7 @@ class UNICRS():
     def __init__(self, args: argparse.Namespace) -> None:
         if args.seed is not None:
             set_seed(args.seed)
-
+        self.args = args
         self.debug = args.debug
 
         self.accelerator = Accelerator(device_placement=False)
@@ -189,7 +189,7 @@ class UNICRS():
 
         outputs = self.model(**input_batch['context'], rec=True)
         logits = outputs.rec_logits[:, self.item_ids]
-        ranks = torch.topk(logits, k=50, dim=-1).indices
+        ranks = torch.topk(logits, k=self.args.topK, dim=-1).indices
         preds = self.item_ids[ranks].tolist()
         labels = input_batch['context']['rec_labels'].tolist()
 

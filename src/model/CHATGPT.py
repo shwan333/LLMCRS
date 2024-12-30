@@ -160,7 +160,7 @@ If you have enough information about user preference, you can give recommendatio
         
         sim_mat = cosine_similarity(conv_embed, self.item_emb_arr)
         rank_arr = np.argsort(sim_mat, axis=-1).tolist()
-        rank_arr = np.flip(rank_arr, axis=-1)[:, :50]
+        rank_arr = np.flip(rank_arr, axis=-1)[:, :self.args.topK]
         item_rank_arr = self.id2item_id_arr[rank_arr].tolist()
         item_rank_arr = [[self.id2entityid[item_id] for item_id in item_rank_arr[0]]]
         

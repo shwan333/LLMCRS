@@ -17,6 +17,7 @@ from src.model.barcor.barcor_model import BartForSequenceClassification
 class BARCOR():
     
     def __init__(self, args: argparse.Namespace) -> None:
+        self.args = args
         self.seed = args.seed
         if self.seed is not None:
             set_seed(self.seed)
@@ -109,7 +110,7 @@ class BARCOR():
         outputs = self.crs_rec_model(**input_dict) 
         item_ids = torch.as_tensor(self.kg['item_ids'], device=self.device)
         logits = outputs['logits'][:, item_ids]
-        ranks = torch.topk(logits, k=50, dim=-1).indices
+        ranks = torch.topk(logits, k=self.args.topK, dim=-1).indices
         preds = item_ids[ranks].tolist()
         
         return preds, labels

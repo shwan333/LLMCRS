@@ -18,6 +18,7 @@ from src.model.utils import padded_tensor
 class KBRD():
     
     def __init__(self, args: argparse.Namespace) -> None:
+        self.args = args
         self.seed = args.seed
         if self.seed is not None:
             set_seed(self.seed)
@@ -115,7 +116,7 @@ class KBRD():
             outputs = self.crs_rec_model(**data_dict['entity'], reduction='mean')
 
             logits = outputs['logit'][:, self.kg['item_ids']]
-            ranks = torch.topk(logits, k=50, dim=-1).indices.tolist()
+            ranks = torch.topk(logits, k=self.args.topK, dim=-1).indices.tolist()
             preds = [[self.kg['item_ids'][rank] for rank in rank_list] for rank_list in ranks]
             labels = data_dict['item']
             

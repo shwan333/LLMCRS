@@ -51,6 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--gpu_id', type=int, default=0)
     parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test'])
+    parser.add_argument('--topK', type=int, default=10)
     # remove argument for conventional CRS (refer to iEVALM official repository)
     
     args = parser.parse_args()

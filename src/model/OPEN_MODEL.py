@@ -8,6 +8,7 @@ import nltk
 import openai
 import tiktoken
 import numpy as np
+import asyncio
 
 from loguru import logger
 from sklearn.metrics.pairwise import cosine_similarity
@@ -73,6 +74,31 @@ def annotate(args: argparse.Namespace, conv_str: str) -> str:
         request_timeout = min(30, request_timeout * 2)
 
     return response
+
+def batch_annotate(args: argparse.Namespace, conv_str_list: list[str]) -> str:
+    async def fetch_chat_completion(args, conv_str):
+        request_timeout = 6
+        for attempt in Retrying(
+            reraise=True, retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+            wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
+        ):
+            with attempt:
+                response = openai.Embedding.create(
+                    model=args.embedding_model, input=conv_str, request_timeout=request_timeout
+                )
+            request_timeout = min(30, request_timeout * 2)
+
+        return response
+    
+    async def main_async(prompts):
+        tasks = [fetch_chat_completion(args, prompt) for prompt in prompts]
+        results = await asyncio.gather(*tasks)
+        return results
+
+    # Execute all API calls concurrently
+    responses = asyncio.run(main_async(conv_str_list))
+        
+    return responses
 
 # def annotate_chat(args: argparse.Namespace, messages_list: list[list[dict]], logit_bias=None) -> str:
 #     formatted_messages_list = self.tokenizer.apply_chat_template(
@@ -319,7 +345,7 @@ If you have enough information about user preference, you can give recommendatio
         
         sim_mat = cosine_similarity(conv_embed, self.item_emb_arr)
         rank_arr = np.argsort(sim_mat, axis=-1).tolist()
-        rank_arr = np.flip(rank_arr, axis=-1)[:, :50]
+        rank_arr = np.flip(rank_arr, axis=-1)[:, :self.args.topK]
         item_rank_arr = self.id2item_id_arr[rank_arr].tolist()
         item_rank_arr = [[self.id2entityid[item_id] for item_id in item_rank_arr[0]]]
         
@@ -329,6 +355,7 @@ If you have enough information about user preference, you can give recommendatio
         
         item_rank_arr_list = []
         rec_labels_list = []
+        conv_str_list = []
         
         for conv_dict in conv_dict_list:
             rec_labels = [self.entity2id[rec] for rec in conv_dict['rec'] if rec in self.entity2id]
@@ -350,7 +377,8 @@ If you have enough information about user preference, you can give recommendatio
             
             conv_str = ""
             
-            for context in context_list[-2:]:
+            # for context in context_list[-2:]:
+            for context in context_list:
                 conv_str += f"{context['role']}: {context['content']} "
                 
             conv_embed = annotate(self.args, conv_str)['data'][0]['embedding']
@@ -358,7 +386,7 @@ If you have enough information about user preference, you can give recommendatio
             
             sim_mat = cosine_similarity(conv_embed, self.item_emb_arr)
             rank_arr = np.argsort(sim_mat, axis=-1).tolist()
-            rank_arr = np.flip(rank_arr, axis=-1)[:, :50]
+            rank_arr = np.flip(rank_arr, axis=-1)[:, :self.args.topK]
             item_rank_arr = self.id2item_id_arr[rank_arr].tolist()
             item_rank_arr = [[self.id2entityid[item_id] for item_id in item_rank_arr[0]]]
             
