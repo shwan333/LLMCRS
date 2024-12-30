@@ -19,7 +19,7 @@ def rec_eval(turn_num, mode):
     with open(f"../data/{args.dataset.split('_')[0]}/entity2id.json", 'r', encoding="utf-8") as f:
         entity2id = json.load(f)
     
-    metric = RecMetric([1, 10, 25, 50])
+    metric = RecMetric([1, 5, 10, 25, 50])
     # persuatiness = 0
     save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
     # save_path = f"../save_{turn_num}/{mode}/{model}/{dataset}" # data loaded path
@@ -50,7 +50,7 @@ def rec_eval(turn_num, mode):
             
         report = metric.report()
         
-        print('r1:', f"{report['recall@1']:.3f}", 'r10:', f"{report['recall@10']:.3f}", 'r25:', f"{report['recall@25']:.3f}", 'r50:', f"{report['recall@50']:.3f}", 'count:', report['count'])
+        print('r1:', f"{report['recall@1']:.3f}", 'r5:', f"{report['recall@5']:.3f}", 'r10:', f"{report['recall@10']:.3f}", 'r25:', f"{report['recall@25']:.3f}", 'r50:', f"{report['recall@50']:.3f}", 'count:', report['count'])
         # if mode == 'chat':
         #     persuativeness_score = persuatiness / len(path_list)
         #     print(f"{persuativeness_score:.3f}")
