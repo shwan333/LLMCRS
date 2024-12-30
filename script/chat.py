@@ -52,6 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpu_id', type=int, default=0)
     parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test'])
     parser.add_argument('--topK', type=int, default=10)
+    parser.add_argument('--history', type=str, default='full')
     # remove argument for conventional CRS (refer to iEVALM official repository)
     
     args = parser.parse_args()
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     with open (f"{args.root_dir}/secret/api.json", "r") as f:
         secret_data = json.load(f)
     openai.api_key = secret_data['openai']
-    save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+    save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
     os.makedirs(save_dir, exist_ok=True)
     random.seed(args.seed)
     

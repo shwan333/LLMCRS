@@ -107,7 +107,10 @@ if __name__ == '__main__':
     # parser.add_argument('--base_LLM', type=str, default='gpt4o-mini', choices=['gpt4o-mini', "Llama-3.1-8B-Instruct", 'Qwen2.5-14B-Instruct'])
     # parser.add_argument('--planning_LLM', type=str, default='gpt4o-mini')
     parser.add_argument('--model', default = 'chatgpt', type=str)
+    parser.add_argument('--rec_model', default = 'gpt-4o-mini', type=str)
     parser.add_argument('--dataset', default = 'opendialkg_eval', type=str, choices=['opendialkg_eval', 'redial_eval'])
+    parser.add_argument('--topK', default = 10, type=int)
+    parser.add_argument('--history', default = 'full', type=str)
     args = parser.parse_args()
     args.kg_dataset = args.dataset.split('_')[0]
 
@@ -141,7 +144,7 @@ if __name__ == '__main__':
     metric = "cosine"
     embedding_model = "text-embedding-3-small"
             
-    folder_path = f"{root_dir}/save_5/chat/{args.model}/{args.dataset}/{eval_data_size}_{eval_strategy}"
+    folder_path = f"{root_dir}/save_5/chat/{args.model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{eval_data_size}_{eval_strategy}"
     print(f'Target folder: {folder_path}')
 
     # Get data for success result for each beam

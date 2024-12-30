@@ -337,8 +337,13 @@ If you have enough information about user preference, you can give recommendatio
         
         conv_str = ""
         
-        for context in context_list[-2:]:
-            conv_str += f"{context['role']}: {context['content']} "
+        if self.args.history == 'full':
+            for context in context_list:
+                conv_str += f"{context['role']}: {context['content']} "
+        else:
+            recent_turn = (-1) * int(self.args.history)
+            for context in context_list[-2:]:
+                conv_str += f"{context['role']}: {context['content']} "
             
         conv_embed = annotate(self.args, conv_str)['data'][0]['embedding']
         conv_embed = np.asarray(conv_embed).reshape(1, -1)
@@ -377,9 +382,13 @@ If you have enough information about user preference, you can give recommendatio
             
             conv_str = ""
             
-            # for context in context_list[-2:]:
-            for context in context_list:
-                conv_str += f"{context['role']}: {context['content']} "
+            if self.args.history == 'full':
+                for context in context_list:
+                    conv_str += f"{context['role']}: {context['content']} "
+            else:
+                recent_turn = (-1) * int(self.args.history)
+                for context in context_list[-2:]:
+                    conv_str += f"{context['role']}: {context['content']} "
                 
             conv_embed = annotate(self.args, conv_str)['data'][0]['embedding']
             conv_embed = np.asarray(conv_embed).reshape(1, -1)

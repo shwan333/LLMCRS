@@ -21,7 +21,7 @@ def rec_eval(turn_num, mode):
     
     metric = RecMetric([1, 10, 25, 50])
     # persuatiness = 0
-    save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+    save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
     # save_path = f"../save_{turn_num}/{mode}/{model}/{dataset}" # data loaded path
     result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}"
     os.makedirs(result_path, exist_ok=True)
@@ -31,6 +31,8 @@ def rec_eval(turn_num, mode):
         print(f"turn_num: {turn_num}, mode: {mode} model: {args.crs_model} dataset: {args.dataset}", len(path_list))
         
         for path in tqdm(path_list):
+            if os.path.isdir(f"{save_path}/{path}"):
+                continue
             with open(f"{save_path}/{path}", 'r', encoding="utf-8") as f:
                 data = json.load(f)
                 # if mode == 'chat':
@@ -67,6 +69,8 @@ if __name__ == '__main__':
     parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
     parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini", choices=["gpt-4o-mini", "Llama-3.1-8B-Instruct", "Qwen2.5-7B-Instruct"])
+    parser.add_argument('--topK', default = 10, type=int)
+    parser.add_argument('--history', default = 'full', type=str)
     
     args = parser.parse_args()
     args.root_dir = os.path.dirname(os.getcwd())
