@@ -106,7 +106,7 @@ def annotate_completion(args: argparse.Namespace, instruct: str, prompt: str, lo
 
     return response
 
-def annotate_batch_completion(args: argparse.Namespace, instruct_list: list[str], prompt_list: list[str], logit_bias=None) -> str:
+def annotate_batch_completion(args: argparse.Namespace, instruct_list: list[str], prompt_list: list[str], logit_bias=None) -> list[str]:
     async def fetch_chat_completion(args, messages, logit_bias):
         request_timeout = 60
         for attempt in Retrying(
@@ -117,28 +117,28 @@ def annotate_batch_completion(args: argparse.Namespace, instruct_list: list[str]
             before_sleep=my_before_sleep
         ):
             with attempt:
-                response = openai.ChatCompletion.create(
-                    model= args.user_model, messages= messages, temperature= 0, max_tokens= 128, request_timeout=request_timeout,
-                )['choices'][0]['message']['content']
+                response = await openai.ChatCompletion.acreate(  # Use `acreate` for async call
+                    model=args.user_model,
+                    messages=messages,
+                    temperature=0,
+                    max_tokens=128,
+                    request_timeout=request_timeout,
+                )
             request_timeout = min(300, request_timeout * 2)
-        return response
-    
+        return response['choices'][0]['message']['content']
+
     async def main_async(prompts):
         tasks = [fetch_chat_completion(args, prompt, logit_bias) for prompt in prompts]
-        results = await asyncio.gather(*tasks)
-        return results
+        return await asyncio.gather(*tasks)  # Gather all async tasks
 
-    # Execute all API calls concurrently
-    messages_list = []
-    for idx, instruct in enumerate(instruct_list):
-        prompt = prompt_list[idx] + '''
-            #############
-        '''
-        messages = [{'role': 'system', 'content': instruct}, {'role': 'user', 'content': prompt}]
-        messages_list.append(messages)
-    responses = asyncio.run(main_async(messages_list))
-    
-    return responses
+    # Prepare messages for API calls
+    messages_list = [
+        [{'role': 'system', 'content': instruct}, {'role': 'user', 'content': prompt + "\n#############"}]
+        for instruct, prompt in zip(instruct_list, prompt_list)
+    ]
+
+    # Run the asynchronous tasks and return the results
+    return asyncio.run(main_async(messages_list))
 
 def get_entity_data(args: argparse.Namespace) -> tuple[dict, list]:
     with open(f'{args.root_dir}/data/{args.kg_dataset}/entity2id.json', 'r', encoding="utf-8") as f: # TODO: 1) 이해하기 쉽게 수정 및 2) hard coding 없애기

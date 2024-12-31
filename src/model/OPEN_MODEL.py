@@ -155,6 +155,11 @@ class OPEN_MODEL():
             
         base_generation_LLM = LLM_model_load(self.args)
         self.model = base_generation_LLM['model']
+        if args.use_lora_at_inference:
+            print(f'use lora')
+            from peft import PeftModel
+            self.model = PeftModel.from_pretrained(self.model, "/home/work/shchoi/iEvaLM-CRS/full_Llama-3.2-1B-Instruct_grad_acc_32_lr_5e-05_epochs_5/checkpoint-500")
+            self.model = self.model.merge_and_unload()
         self.tokenizer = base_generation_LLM['tokenizer']
         
         self.kg_dataset = args.kg_dataset
@@ -342,7 +347,7 @@ If you have enough information about user preference, you can give recommendatio
                 conv_str += f"{context['role']}: {context['content']} "
         else:
             recent_turn = (-1) * int(self.args.history)
-            for context in context_list[-2:]:
+            for context in context_list[recent_turn:]:
                 conv_str += f"{context['role']}: {context['content']} "
             
         conv_embed = annotate(self.args, conv_str)['data'][0]['embedding']
@@ -387,10 +392,14 @@ If you have enough information about user preference, you can give recommendatio
                     conv_str += f"{context['role']}: {context['content']} "
             else:
                 recent_turn = (-1) * int(self.args.history)
-                for context in context_list[-2:]:
+                for context in context_list[recent_turn:]:
                     conv_str += f"{context['role']}: {context['content']} "
-                
-            conv_embed = annotate(self.args, conv_str)['data'][0]['embedding']
+            conv_str_list.append(conv_str)
+        
+        conv_embed_list = annotate(self.args, conv_str_list)['data']
+        
+        for conv_embed in conv_embed_list:
+            conv_embed = conv_embed['embedding']
             conv_embed = np.asarray(conv_embed).reshape(1, -1)
             
             sim_mat = cosine_similarity(conv_embed, self.item_emb_arr)

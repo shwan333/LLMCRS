@@ -279,7 +279,8 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
     rec_success_list = [False] * len(dialog_id_list)
     seeker_prompt_list = []
     goal_item_list_list = []
-    
+    import time
+    start_time = time.time()
     for idx, dialog_id in enumerate(dialog_id_list):
         conv_dict = copy.deepcopy(dialog_data_list[idx]) # for model
         context = conv_dict['context']
@@ -313,7 +314,8 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
         goal_item_list_list.append(goal_item_list)
         
     recommendation_template = "I would recommend the following items: {}:"
-
+    print(f'initialization_time: {time.time() - start_time}s')
+    start_time = time.time()
     for i in range(0, args.turn_num):
         print(f"Turn {i+1}")
         # Time for recommender 
@@ -328,7 +330,10 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
                     rec_success_list[idx] = True
                     break
         del rec_labels_list
-                
+        
+        print(f'Rec time: {time.time() - start_time}s')
+        start_time = time.time()
+        
         # conversation
         print(f'Get conversation')
         _, recommender_text_list = recommender.get_batch_conv(conv_dict_list)
@@ -360,6 +365,9 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
         del recommender_text_list
         del rec_items_list
         
+        print(f'Conv time: {time.time() - start_time}s')
+        start_time = time.time()
+        
         # Time for seeker
         print(f'Get seeker response')
         seeker_text_list = annotate_batch_completion(args, seeker_instruct_list, seeker_prompt_list) # TODO: utils.py에서 구현
@@ -381,6 +389,9 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
             conv_dict_list[idx]['context'].append(seeker_text)
             conv_dict_list[idx]['entity'] += seeker_resp_entity
             conv_dict_list[idx]['entity'] = list(set(conv_dict_list[idx]['entity']))
+        
+        print(f'Seeker time: {time.time() - start_time}s')
+        start_time = time.time()
         
         # terminate if rec success
         removal_dialog_id_list = []
@@ -409,19 +420,22 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
         
         if len(dialog_id_list) == 0:
             break
+        
+        print(f'post-process time: {time.time() - start_time}s')
+        start_time = time.time()
     
     if len(dialog_id_list) != 0:
         for dialog_id in dialog_id_list:
             idx = dialog_id_list.index(dialog_id)
-            if rec_success_list[idx]:
-                #TODO: write the result
-                conv_dict_list[idx]['context'] = context_dict_list[idx]
-                dialog_data_list[idx]['simulator_dialog'] = conv_dict_list[idx]
+            
+            #TODO: write the result
+            conv_dict_list[idx]['context'] = context_dict_list[idx]
+            dialog_data_list[idx]['simulator_dialog'] = conv_dict_list[idx]
 
-                # save
-                with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
-                    json.dump(dialog_data_list[idx], f, ensure_ascii=False, indent=2)
-                removal_dialog_id_list.append(dialog_id)
+            # save
+            with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
+                json.dump(dialog_data_list[idx], f, ensure_ascii=False, indent=2)
+            removal_dialog_id_list.append(dialog_id)
     
     # # score persuativeness
     # conv_dict['context'] = context_dict
