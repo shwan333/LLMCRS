@@ -53,6 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test'])
     parser.add_argument('--topK', type=int, default=10)
     parser.add_argument('--history', type=str, default='full')
+    parser.add_argument('--use_lora_at_inference', action='store_true')
     # remove argument for conventional CRS (refer to iEVALM official repository)
     
     args = parser.parse_args()
@@ -61,7 +62,11 @@ if __name__ == '__main__':
     with open (f"{args.root_dir}/secret/api.json", "r") as f:
         secret_data = json.load(f)
     openai.api_key = secret_data['openai']
-    save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+    if args.use_lora_at_inference:
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+    else:
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+    
     os.makedirs(save_dir, exist_ok=True)
     random.seed(args.seed)
     

@@ -21,9 +21,12 @@ def rec_eval(turn_num, mode):
     
     metric = RecMetric([1, 5, 10, 25, 50])
     # persuatiness = 0
-    save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
-    # save_path = f"../save_{turn_num}/{mode}/{model}/{dataset}" # data loaded path
-    result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}"
+    if args.use_lora_at_inference:
+        save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+        result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}_lora"
+    else:
+        save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+        result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}"        
     os.makedirs(result_path, exist_ok=True)
     print(os.listdir(save_path))
     if os.path.exists(save_path) and len(os.listdir(save_path)) > 0:
@@ -68,9 +71,10 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, choices=['redial_eval', 'opendialkg_eval'])
     parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
-    parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini", choices=["gpt-4o-mini", "Llama-3.1-8B-Instruct", "Qwen2.5-7B-Instruct"])
-    parser.add_argument('--topK', default = 10, type=int)
+    parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
+    parser.add_argument('--topK', default = 50, type=int)
     parser.add_argument('--history', default = 'full', type=str)
+    parser.add_argument('--use_lora_at_inference', action='store_true')
     
     args = parser.parse_args()
     args.root_dir = os.path.dirname(os.getcwd())
