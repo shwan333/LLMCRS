@@ -23,7 +23,7 @@ def simulate_iEvaLM(dialog_id: str, data: dict, seeker_instruction_template: str
     goal_item_str = ', '.join(goal_item_list)
     seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
     seeker_prompt = '''
-        Conversation History
+        You are role-playing as a Seeker to generate the Seeker's next response. Keep in mind that Your task is to generate the User’s next response. Below is Conversation History
         #############
     '''
     context_dict = [] # for save
@@ -84,7 +84,7 @@ def simulate_iEvaLM(dialog_id: str, data: dict, seeker_instruction_template: str
         # seeker
         seeker_text = annotate_completion(args, seeker_instruct, seeker_prompt).strip()
         seeker_response = filter_seeker_text(seeker_text, goal_item_list, rec_success)
-        seeker_prompt += f' {seeker_response}\n'
+        seeker_prompt += f'Seeker: {seeker_response}\n'
         
         # public
         seeker_resp_entity = get_entity(seeker_text, entity_list)
@@ -124,7 +124,7 @@ def construct_DPO_data(dialog_id: str, data: dict, seeker_instruction_template: 
     goal_item_str = ', '.join(goal_item_list)
     seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
     seeker_prompt = '''
-        Conversation History
+        You are role-playing as a Seeker to generate the Seeker's next response. Keep in mind that Your task is to generate the User’s next response. Below is Conversation History
         #############
     '''
     context_dict = [] # for save
@@ -193,7 +193,7 @@ def construct_DPO_data(dialog_id: str, data: dict, seeker_instruction_template: 
         for idx in range(len(recommender_text_list)):
             seeker_text_list.append(annotate_completion(args, seeker_instruct, seeker_prompt_list[idx]).strip())
             seeker_response = filter_seeker_text(seeker_text_list[idx], goal_item_list, rec_success)
-            seeker_prompt_list[idx] += f' {seeker_response}\n'
+            seeker_prompt_list[idx] += f'Seeker: {seeker_response}\n'
         print(seeker_text_list)
         # Post-process
         seeker_prompt = seeker_prompt_list[random_index]
@@ -289,7 +289,7 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
         goal_item_str = ', '.join(goal_item_list)
         seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
         seeker_prompt = '''
-            Conversation History
+            You are role-playing as a Seeker to generate the Seeker's next response. Keep in mind that Your task is to generate the User’s next response. Below is Conversation History
             #############
         '''
         context_dict = [] # for save
@@ -375,7 +375,7 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
         # post-process for seeker utterance
         for idx, seeker_text in enumerate(seeker_text_list):
             seeker_response = filter_seeker_text(seeker_text, goal_item_list_list[idx], rec_success_list[idx])
-            seeker_prompt_list[idx] += f' {seeker_response}\n'
+            seeker_prompt_list[idx] += f'Seeker: {seeker_response}\n'
         
             # public
             seeker_resp_entity = get_entity(seeker_text, entity_list)
@@ -492,6 +492,7 @@ def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], data_list
         json.dump(save_data, f, ensure_ascii=False, indent=2)
 
 def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], seeker_instruction_template: str, args: argparse.Namespace, recommender: RECOMMENDER, id2entity: dict, entity_list: list, save_dir: str):
+    start_time = time.time()
     print("=====================================")
     print(dialog_id_list)
     start_time = time.time()
@@ -517,7 +518,7 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
         goal_item_str = ', '.join(goal_item_list)
         seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
         seeker_prompt = '''
-            Conversation History
+            You are role-playing as a Seeker to generate the Seeker's next response. Keep in mind that Your task is to generate the User’s next response. Below is Conversation History
             #############
         '''
         context_dict = [] # for save
@@ -544,7 +545,8 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
 
     # 1. 매 턴에서의 chosen과 rejected를 구분하여 저장
     # 2. next convdict를 생성하는 것
-    print(f'initialization_time: {time.time() - start_time}s')
+    print(f'initialization_time: {(time.time() - start_time):.2f}s')
+    start_time = time.time()
     for each_turn in range(0, args.turn_num):
         print(f"Turn {each_turn}")
         start_time = time.time()
@@ -559,6 +561,8 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
                 current_turn_seeker_instruct_list.append(copy.deepcopy(seeker_instruct_list[i]))
         # Recommendation
         rec_items_list, rec_labels_list = recommender.get_batch_rec(conv_dict_list)
+        print(f'recommendation time: {(time.time() - start_time):.2f}s')
+        start_time = time.time()
         
         # check if rec success
         for idx, rec_labels in enumerate(rec_labels_list):
@@ -570,11 +574,13 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
             
         # Conversation
         _, recommender_text_list = recommender.get_sample_batch_conv(conv_dict_list) # length = batch_size * sample_size (beam_num)
+        print(f'conversation time: {(time.time() - start_time):.2f}s')
+        start_time = time.time()
         
         # post-process
         print(len(dialog_id_list), len(recommender_text_list))
         resized_recommender_text_list = convert_1d_to_2d(recommender_text_list, len(dialog_id_list), len(recommender_text_list) // len(dialog_id_list))
-        random_index = random.choice(list(range(len(dialog_id_list))))
+        random_index = random.choice(list(range(len(recommender_text_list) // len(dialog_id_list))))
         save_recommender_text_list = [resized_recommender_text_list[idx][random_index] for idx in range(len(resized_recommender_text_list))]
         
         for idx, rec_success in enumerate(rec_success_list):
@@ -588,10 +594,14 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
             seeker_prompt_list[idx] += f'Recommender: {save_recommender_text_list[idx]}\n'
         del rec_items_list    
         del save_recommender_text_list
+        print(f'post-proces time: {(time.time() - start_time):.2f}s')
+        start_time = time.time()
         
         # Seeker Response
         seeker_text_list = annotate_batch_completion(args, seeker_instruct_list, seeker_prompt_list)
-        
+        print(f'seeker_response time: {(time.time() - start_time):.2f}s')
+        start_time = time.time()
+                
         # post-process
         for idx, seeker_text in enumerate(seeker_text_list):
             seeker_response = filter_seeker_text(seeker_text, goal_item_list_list[idx], rec_success_list[idx])
@@ -601,7 +611,7 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
                 'content': seeker_text,
             })
             conv_dict_list[idx]['context'].append(seeker_text)
-            seeker_prompt_list[idx] += f' {seeker_response}\n'
+            seeker_prompt_list[idx] += f'Seeker: {seeker_response}\n'
         
         print(f'each_turn_time: {time.time() - start_time}s')
         start_time = time.time()
@@ -614,6 +624,9 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
             })
             
         seeker_text_list = annotate_batch_completion(args, current_turn_seeker_instruct_list, current_turn_seeker_prompt_list)
+        print(f'seeker_response for DPO: {(time.time() - start_time):.2f}s')
+        start_time = time.time()
+        
         for idx in range(len(current_turn_context_dict_list)):
             current_turn_context_dict_list[idx].append({
                 'role': 'user',
@@ -629,7 +642,7 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
             processes.append(p)
         for p in processes:
             p.join()
-        print(f'dpo_data_construction&save: {time.time() - start_time}s')
+        print(f'dpo_data_construction&save: {(time.time() - start_time):.2f}s')
             # base_dialog_emb = get_dialog_emb(each_context_dict_list[0][:-2], args.embedding_model)
             # target_item_title = conv_dict_list[idx]['rec'][0] # TODO: 여러 개의 target item을 고려할 수 있도록 수정
             # target_item_emb = title2emb[target_item_title]
