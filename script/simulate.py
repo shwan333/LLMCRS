@@ -518,7 +518,7 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
         goal_item_str = ', '.join(goal_item_list)
         seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
         seeker_prompt = '''
-            You are role-playing as a Seeker to generate the Seeker's next response. Keep in mind that Your task is to generate the User’s next response. Below is Conversation History
+            You are role-playing as a Seeker to only generate the Seeker's next response. You are not recommender, so do not generate responses or utterances on behalf of the recommender. Keep in mind that Your task is only to generate the User’s next response. Below is Conversation History
             #############
         '''
         context_dict = [] # for save
