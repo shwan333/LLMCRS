@@ -72,6 +72,15 @@ def get_exist_dialog_set(save_dir: str) -> set:
         exist_id_set.add(file_id)
     return exist_id_set
 
+def get_exist_dpo_data(save_dir: str) -> set:
+    exist_id_set = set()
+    for file in os.listdir(save_dir):
+        file_id = os.path.splitext(file)[0]
+        file_token = file_id.split('_')
+        dialog_id = '_'.join(file_token[:-1])
+        exist_id_set.add(dialog_id)
+    return exist_id_set
+
 def get_dialog_data(args: argparse.Namespace) -> dict:
     dialog_id2data = {}
     with open(f'{args.root_dir}/data/{args.dataset}/{args.eval_data_size}_{args.split}_data_processed_{args.eval_strategy}.jsonl', encoding='utf-8') as f:

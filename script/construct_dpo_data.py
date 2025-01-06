@@ -24,7 +24,7 @@ sys.path.append("..")
 
 from src.model.utils import get_entity
 from src.model.recommender import RECOMMENDER
-from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data, set_seed
+from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data, set_seed, get_exist_dpo_data
 from simulate import construct_DPO_data, batch_construct_DPO_data
 
 warnings.filterwarnings('ignore')
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, choices=['redial_eval', 'opendialkg_eval'])
+    parser.add_argument('--dataset', type=str)
     parser.add_argument('--kg_dataset', type=str, choices=['redial', 'opendialkg'])
     parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     recommender_instruction, seeker_instruction_template = get_instruction(args.dataset) # TODO: instruction 받는 형태를 하나로 통일
     id2entity, entity_list = get_entity_data(args)
     dialog_id2data = get_dialog_data(args)
-    dialog_id_set = set(dialog_id2data.keys()) - get_exist_dialog_set(save_dir)
+    dialog_id_set = set(dialog_id2data.keys()) - get_exist_dpo_data(save_dir)
     dialog_id_list = list(dialog_id_set)
     if 'process' in args.inference_mode:
         if args.inference_mode == 'multi-process':
