@@ -445,7 +445,7 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
     # with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
     #     json.dump(data, f, ensure_ascii=False, indent=2)
     
-def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], data_list: list[dict], save_dir: str, each_context_dict_list: list[dict], 
+def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], instruct_list: list[str], prompt_list: list[str], rec_model_prompt: str, save_dir: str, each_context_dict_list: list[dict], 
                   conv_dict_list: list[dict], item_embeddings: np.ndarray, idx: int, title2emb: dict, each_turn: int):
     base_dialog_emb = get_dialog_emb(each_context_dict_list[0][:-2], args.embedding_model)
     target_item_title = conv_dict_list[idx]['rec'][0] # TODO: 여러 개의 target item을 고려할 수 있도록 수정
@@ -473,6 +473,15 @@ def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], data_list
     pos_score = diff_sim_list[max_idx]
     neg_score = diff_sim_list[min_idx]
     
+    pos_seeker_prompt = prompt_list[max_idx]
+    neg_seeker_prompt = prompt_list[min_idx]
+    pos_seeker_instruct = instruct_list[max_idx]
+    neg_seeker_instruct = instruct_list[min_idx]
+    
+    assert pos_seeker_prompt == neg_seeker_prompt and pos_seeker_instruct == neg_seeker_instruct
+    
+    total_seeker_prompt = [{'role': 'system', 'content': pos_seeker_instruct}, {'role': 'user', 'content': pos_seeker_prompt + "\n#############"}]
+    
     for dialog in [pos_dialog, neg_dialog]:
         for i, context_dict_element in enumerate(dialog):
             for key in list(context_dict_element.keys()):
@@ -483,6 +492,8 @@ def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], data_list
     save_data = {
         'chosen': pos_dialog,
         'rejected': neg_dialog,
+        'seeker_prompt': total_seeker_prompt,
+        'recommender_prompt': rec_model_prompt,
         'chosen_score': pos_score,
         'rejected_score': neg_score
     }
@@ -517,10 +528,18 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
         goal_item_list = [f'"{item}"' for item in conv_dict['rec']]
         goal_item_str = ', '.join(goal_item_list)
         seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
-        seeker_prompt = '''
-            You are role-playing as a Seeker to only generate the Seeker's next response. You are not recommender, so do not generate responses or utterances on behalf of the recommender. Keep in mind that Your task is only to generate the User’s next response. Below is Conversation History
-            #############
-        '''
+        # seeker_prompt = ''' v0
+        #     You are role-playing as a Seeker to only generate the Seeker's next response. You are not recommender, so do not generate responses or utterances on behalf of the recommender. Keep in mind that Your task is only to generate the User’s next response. Below is Conversation History
+        #     #############
+        # '''
+        #v3
+        seeker_prompt = ''' Keep your response brief. Use casual language and vary your wording. \
+Make sure your response matches your Seeker persona, your preferred attributes, and your conversation context. \
+Do not include your feelings into the response to the Seeker! \
+Respond in the first person voice (use "I" instead of "Seeker", use "you" instead of "recommender") and speaking style of the Seeker. \
+Below is Conversation History\n
+#############
+'''
         context_dict = [] # for save
 
         for i, text in enumerate(context):
@@ -634,10 +653,14 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
             })
         
         processes = []
+        rec_model_prompt = recommender.crs_model.chat_recommender_instruction
         for idx in range(len(context_dict_list)):
             each_context_dict_list = current_turn_context_dict_list[args.beam_num * idx: args.beam_num * (idx + 1)]
+            each_seeker_prompt_list = current_turn_seeker_prompt_list[args.beam_num * idx: args.beam_num * (idx + 1)]
+            each_seeker_instruct_list = current_turn_seeker_instruct_list[args.beam_num * idx: args.beam_num * (idx + 1)]
+            
             p = Process(target=save_dpo_data,
-                        args=(args, dialog_id_list, data_list, save_dir, each_context_dict_list, conv_dict_list, item_embeddings, idx, title2emb, each_turn))
+                        args=(args, dialog_id_list, each_seeker_instruct_list, each_seeker_prompt_list, rec_model_prompt, save_dir, each_context_dict_list, conv_dict_list, item_embeddings, idx, title2emb, each_turn))
             p.start()
             processes.append(p)
         for p in processes:
