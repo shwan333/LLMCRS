@@ -437,14 +437,6 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
                 json.dump(dialog_data_list[idx], f, ensure_ascii=False, indent=2)
             removal_dialog_id_list.append(dialog_id)
     
-    # # score persuativeness
-    # conv_dict['context'] = context_dict
-    # data['simulator_dialog'] = conv_dict
-
-    # # save
-    # with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
-    #     json.dump(data, f, ensure_ascii=False, indent=2)
-    
 def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], instruct_list: list[str], prompt_list: list[str], rec_model_prompt: str, save_dir: str, each_context_dict_list: list[dict], 
                   conv_dict_list: list[dict], item_embeddings: np.ndarray, idx: int, title2emb: dict, each_turn: int):
     base_dialog_emb = get_dialog_emb(each_context_dict_list[0][:-2], args.embedding_model)

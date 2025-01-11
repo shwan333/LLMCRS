@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpu_id', type=int, default=0)
     parser.add_argument('--temperature', type=float, default=1.5)
     parser.add_argument('--beam_num', type=int, default=8)
-    parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test'])
+    parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test', 'sample'])
     parser.add_argument('--use_lora_at_inference', action='store_true')
     parser.add_argument('--topK', type=int, default=50)
     parser.add_argument('--history', type=str, default='full')

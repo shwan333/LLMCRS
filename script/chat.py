@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--turn_num', type=int, default=5)
     parser.add_argument('--crs_model', type=str, choices=['kbrd', 'barcor', 'unicrs', 'chatgpt', 'openmodel'])
     parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small", choices=["text-embedding-3-small"])
-    parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini", choices=["gpt-4o-mini", "Llama-3.1-8B-Instruct", "Llama-3.2-1B-Instruct", "Qwen2.5-7B-Instruct"])
+    parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
     parser.add_argument('--user_model', type=str, default = "gpt-4o-mini", choices=["gpt-4o-mini"])
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--debug', action='store_true')
