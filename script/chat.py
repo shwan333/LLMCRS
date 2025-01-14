@@ -25,7 +25,7 @@ sys.path.append("..")
 from src.model.utils import get_entity
 from src.model.recommender import RECOMMENDER
 from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data
-from simulate import simulate_iEvaLM, batch_simulate_iEvaLM
+from simulate import simulate_iEvaLM, batch_simulate_iEvaLM, batch_simulate_iEvaLM_rewriting
 
 warnings.filterwarnings('ignore')
 
@@ -54,6 +54,8 @@ if __name__ == '__main__':
     parser.add_argument('--topK', type=int, default=10)
     parser.add_argument('--history', type=str, default='full')
     parser.add_argument('--use_lora_at_inference', action='store_true')
+    parser.add_argument('--rewrite', action='store_true')
+    parser.add_argument('--use_unsloth', action='store_true')
     # remove argument for conventional CRS (refer to iEVALM official repository)
     
     args = parser.parse_args()
@@ -61,12 +63,15 @@ if __name__ == '__main__':
     args.device = f'cuda:{args.gpu_id}'
     with open (f"{args.root_dir}/secret/api.json", "r") as f:
         secret_data = json.load(f)
-    openai.api_key = secret_data['openai']
+    openai.api_key = secret_data['mycredit']
     if args.use_lora_at_inference:
         save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
     else:
         save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
     
+    if args.rewrite:
+        save_dir = f'{save_dir}_rewrite'
+        
     os.makedirs(save_dir, exist_ok=True)
     random.seed(args.seed)
     
@@ -119,7 +124,10 @@ if __name__ == '__main__':
                 
                 # Data preparation
                 dialog_data_list = [dialog_id2data[dialog_id] for dialog_id in dialog_sub_list]
-                batch_simulate_iEvaLM(copy.deepcopy(dialog_sub_list), copy.deepcopy(dialog_data_list), seeker_instruction_template, args, recommender, id2entity, entity_list, save_dir)
+                if args.rewrite:
+                    batch_simulate_iEvaLM_rewriting(copy.deepcopy(dialog_sub_list), copy.deepcopy(dialog_data_list), seeker_instruction_template, args, recommender, id2entity, entity_list, save_dir)
+                else:
+                    batch_simulate_iEvaLM(copy.deepcopy(dialog_sub_list), copy.deepcopy(dialog_data_list), seeker_instruction_template, args, recommender, id2entity, entity_list, save_dir)
                 
                 # Update progress bar
                 pbar.update(1)

@@ -158,7 +158,7 @@ class OPEN_MODEL():
         if args.use_lora_at_inference:
             print(f'use lora')
             from peft import PeftModel
-            self.model = PeftModel.from_pretrained(self.model, "/home/work/shchoi/iEvaLM-CRS/full_Llama-3.2-1B-Instruct_grad_acc_32_lr_5e-05_epochs_5/checkpoint-500")
+            self.model = PeftModel.from_pretrained(self.model, f"/home/work/shchoi/iEvaLM-CRS/full_{args.rec_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
             self.model = self.model.merge_and_unload()
         self.tokenizer = base_generation_LLM['tokenizer']
         
@@ -521,3 +521,43 @@ If you have enough information about user preference, you can give recommendatio
         gen_str_list = self.annotate_sample_batch_chat(self.args, context_list_list)
         
         return gen_inputs, gen_str_list
+    
+    def get_batch_rewriting_rec(self, conv_dict_list):
+        context_list_list = []
+        for conv_dict in conv_dict_list:
+            context = conv_dict['context']
+            context_list = [] # for model
+            context_list.append({
+                'role': 'system',
+                'content': '''You are a extractor to summarize user preference from dialogue. You must follow the instructions below during chat.
+If you find features about user preference, you should include them into your summarization.
+If there is repetitive contents or just chit-chat irrelevant to user preference, then you can ignore it.
+'''
+            })
+            
+            seeker_prompt = '''
+You are role-playing as a extractor to summarize user preference from dialogue. Below is Conversation History
+#############
+        '''
+
+            for i, text in enumerate(context):
+                if len(text) == 0:
+                    continue
+                if i % 2 == 0:
+                    seeker_prompt += f'Seeker: {text}\n'
+                else:
+                    seeker_prompt += f'Recommender: {text}\n'
+            seeker_prompt += "#############"
+            context_list.append({
+                'role': 'user',
+                'content': seeker_prompt
+            })
+            
+            gen_inputs = None
+            context_list_list.append(context_list)
+        rewritten_user_preference = self.annotate_batch_chat(self.args, context_list_list)
+        
+        item_rank_arr_list, rec_labels_list = self.get_batch_rec(conv_dict_list)
+        
+        return gen_inputs, rewritten_user_preference, item_rank_arr_list, rec_labels_list
+        

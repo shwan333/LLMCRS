@@ -436,6 +436,176 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
             with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
                 json.dump(dialog_data_list[idx], f, ensure_ascii=False, indent=2)
             removal_dialog_id_list.append(dialog_id)
+            
+def batch_simulate_iEvaLM_rewriting(dialog_id_list: list[str], dialog_data_list: list[dict], seeker_instruction_template: str, args: argparse.Namespace, recommender: RECOMMENDER, id2entity: dict, entity_list: list, save_dir: str):
+    """
+    simulate function for multiple dialogs with iEvaLM model. It should be noted that this function can not be used for baselines.
+    Also, this function utilize rewriting for recommendation. It is just beta version and need to be improved.
+    """
+    conv_dict_list = []
+    context_dict_list = []
+    seeker_instruct_list = []
+    rec_success_list = [False] * len(dialog_id_list)
+    seeker_prompt_list = []
+    goal_item_list_list = []
+    import time
+    start_time = time.time()
+    for idx, dialog_id in enumerate(dialog_id_list):
+        conv_dict = copy.deepcopy(dialog_data_list[idx]) # for model
+        context = conv_dict['context']
+
+        goal_item_list = [f'"{item}"' for item in conv_dict['rec']]
+        goal_item_str = ', '.join(goal_item_list)
+        seeker_instruct = seeker_instruction_template.format(goal_item_str, goal_item_str, goal_item_str, goal_item_str)
+        seeker_prompt = '''
+            You are role-playing as a Seeker to generate the Seeker's next response. Keep in mind that Your task is to generate the User’s next response. Below is Conversation History
+            #############
+        '''
+        context_dict = [] # for save
+
+        for i, text in enumerate(context):
+            if len(text) == 0:
+                continue
+            if i % 2 == 0:
+                role_str = 'user'
+                seeker_prompt += f'Seeker: {text}\n'
+            else:
+                role_str = 'assistant'
+                seeker_prompt += f'Recommender: {text}\n'
+            context_dict.append({
+                'role': role_str,
+                'content': text
+            })
+        seeker_prompt_list.append(seeker_prompt)
+        conv_dict_list.append(conv_dict)
+        context_dict_list.append(context_dict)
+        seeker_instruct_list.append(seeker_instruct)
+        goal_item_list_list.append(goal_item_list)
+        
+    recommendation_template = "I would recommend the following items: {}:"
+    print(f'initialization_time: {time.time() - start_time}s')
+    start_time = time.time()
+    for i in range(0, args.turn_num):
+        print(f"Turn {i+1}")
+        # Time for recommender 
+        # recommendation
+        print(f'Get recommendation')
+        _, rewritten_userpreference_list, rec_items_list, rec_labels_list = recommender.get_batch_rewriting_rec(conv_dict_list)
+        
+        # check if rec success
+        for idx, rec_labels in enumerate(rec_labels_list):
+            for rec_label in rec_labels:
+                if rec_label in rec_items_list[idx][0]:
+                    rec_success_list[idx] = True
+                    break
+        del rec_labels_list
+        
+        print(f'Rec time: {time.time() - start_time}s')
+        start_time = time.time()
+        
+        # conversation
+        print(f'Get conversation')
+        _, recommender_text_list = recommender.get_batch_conv(conv_dict_list)
+        
+        # post-process for conversation
+        for idx, rec_success in enumerate(rec_success_list):
+            if rec_success == True or i == args.turn_num - 1:
+                rec_items_str = ''
+                for j, rec_item in enumerate(rec_items_list[idx][0][:50]):
+                    rec_items_str += f"{j+1}: {id2entity[rec_item]}\n"
+                recommendation_template = recommendation_template.format(rec_items_str)
+                recommender_text_list[idx] = recommendation_template + recommender_text_list[idx]
+        
+            recommender_resp_entity = get_entity(recommender_text_list[idx], entity_list)
+        
+            conv_dict_list[idx]['context'].append(recommender_text_list[idx])
+            conv_dict_list[idx]['entity'] += recommender_resp_entity
+            conv_dict_list[idx]['entity'] = list(set(conv_dict_list[idx]['entity']))
+        
+            context_dict_list[idx].append({
+                'role': 'assistant',
+                'content': recommender_text_list[idx],
+                'user_preference': rewritten_userpreference_list[idx],
+                'entity': recommender_resp_entity,
+                'rec_items': rec_items_list[idx][0],
+                'rec_success': rec_success
+            })
+        
+            seeker_prompt_list[idx] += f'Recommender: {recommender_text_list[idx]}\n'
+        del recommender_text_list
+        del rec_items_list
+        
+        print(f'Conv time: {time.time() - start_time}s')
+        start_time = time.time()
+        
+        # Time for seeker
+        print(f'Get seeker response')
+        seeker_text_list = annotate_batch_completion(args, seeker_instruct_list, seeker_prompt_list) # TODO: utils.py에서 구현
+        
+        # post-process for seeker utterance
+        for idx, seeker_text in enumerate(seeker_text_list):
+            seeker_response = filter_seeker_text(seeker_text, goal_item_list_list[idx], rec_success_list[idx])
+            seeker_prompt_list[idx] += f'Seeker: {seeker_response}\n'
+        
+            # public
+            seeker_resp_entity = get_entity(seeker_text, entity_list)
+        
+            context_dict_list[idx].append({
+                'role': 'user',
+                'content': seeker_text,
+                'entity': seeker_resp_entity,
+            })
+            
+            conv_dict_list[idx]['context'].append(seeker_text)
+            conv_dict_list[idx]['entity'] += seeker_resp_entity
+            conv_dict_list[idx]['entity'] = list(set(conv_dict_list[idx]['entity']))
+        
+        print(f'Seeker time: {time.time() - start_time}s')
+        start_time = time.time()
+        
+        # terminate if rec success
+        removal_dialog_id_list = []
+        for dialog_id in dialog_id_list:
+            idx = dialog_id_list.index(dialog_id)
+            if rec_success_list[idx]:
+                #TODO: write the result
+                # score persuativeness
+                conv_dict_list[idx]['context'] = context_dict_list[idx]
+                dialog_data_list[idx]['simulator_dialog'] = conv_dict_list[idx]
+
+                # save
+                with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
+                    json.dump(dialog_data_list[idx], f, ensure_ascii=False, indent=2)
+                removal_dialog_id_list.append(dialog_id)
+        
+        #TODO: delete the relevant dialog element from the list
+        for delete_dialog_id in removal_dialog_id_list:
+            idx = dialog_id_list.index(delete_dialog_id)
+            target_lists = [dialog_id_list, dialog_data_list, conv_dict_list, context_dict_list, seeker_instruct_list, rec_success_list, seeker_prompt_list, goal_item_list_list]
+            for target_list in target_lists:
+                target_list.pop(idx)
+                
+        assert len(dialog_id_list) == len(dialog_data_list) == len(conv_dict_list) == len(context_dict_list) \
+            == len(seeker_instruct_list) == len(rec_success_list) == len(seeker_prompt_list) == len(goal_item_list_list)
+        
+        if len(dialog_id_list) == 0:
+            break
+        
+        print(f'post-process time: {time.time() - start_time}s')
+        start_time = time.time()
+    
+    if len(dialog_id_list) != 0:
+        for dialog_id in dialog_id_list:
+            idx = dialog_id_list.index(dialog_id)
+            
+            #TODO: write the result
+            conv_dict_list[idx]['context'] = context_dict_list[idx]
+            dialog_data_list[idx]['simulator_dialog'] = conv_dict_list[idx]
+
+            # save
+            with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
+                json.dump(dialog_data_list[idx], f, ensure_ascii=False, indent=2)
+            removal_dialog_id_list.append(dialog_id)
     
 def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], instruct_list: list[str], prompt_list: list[str], rec_model_prompt: str, save_dir: str, each_context_dict_list: list[dict], 
                   conv_dict_list: list[dict], item_embeddings: np.ndarray, idx: int, title2emb: dict, each_turn: int):

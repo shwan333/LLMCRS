@@ -26,7 +26,13 @@ def rec_eval(turn_num, mode):
         result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}_lora"
     else:
         save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
-        result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}"        
+        result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}"
+    
+    if args.rewrite:
+        save_path = f'{save_path}_rewrite'
+        result_path = f"{result_path}_rewrite"
+    
+    print(save_path)
     os.makedirs(result_path, exist_ok=True)
     print(os.listdir(save_path))
     if os.path.exists(save_path) and len(os.listdir(save_path)) > 0:
@@ -75,6 +81,7 @@ if __name__ == '__main__':
     parser.add_argument('--topK', default = 50, type=int)
     parser.add_argument('--history', default = 'full', type=str)
     parser.add_argument('--use_lora_at_inference', action='store_true')
+    parser.add_argument('--rewrite', action='store_true')
     
     args = parser.parse_args()
     args.root_dir = os.path.dirname(os.getcwd())
