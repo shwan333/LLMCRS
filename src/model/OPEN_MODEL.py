@@ -20,56 +20,17 @@ from thefuzz import fuzz
 from tqdm import tqdm
 
 from .utils import LLM_model_load
-
-def my_before_sleep(retry_state):
-    logger.debug(f'Retrying: attempt {retry_state.attempt_number} ended with: {retry_state.outcome}, spend {retry_state.seconds_since_start} in total')
-
-
-class my_wait_exponential(wait_base):
-    def __init__(
-        self,
-        multiplier: typing.Union[int, float] = 1,
-        max: _utils.time_unit_type = _utils.MAX_WAIT,  # noqa
-        exp_base: typing.Union[int, float] = 2,
-        min: _utils.time_unit_type = 0,  # noqa
-    ) -> None:
-        self.multiplier = multiplier
-        self.min = _utils.to_seconds(min)
-        self.max = _utils.to_seconds(max)
-        self.exp_base = exp_base
-
-    def __call__(self, retry_state: "RetryCallState") -> float:
-        if retry_state.outcome == openai.error.Timeout:
-            return 0
-
-        try:
-            exp = self.exp_base ** (retry_state.attempt_number - 1)
-            result = self.multiplier * exp
-        except OverflowError:
-            return self.max
-        return max(max(0, self.min), min(result, self.max))
-
-
-class my_stop_after_attempt(stop_base):
-    """Stop when the previous attempt >= max_attempt."""
-
-    def __init__(self, max_attempt_number: int) -> None:
-        self.max_attempt_number = max_attempt_number
-
-    def __call__(self, retry_state: "RetryCallState") -> bool:
-        if retry_state.outcome == openai.error.Timeout:
-            retry_state.attempt_number -= 1
-        return retry_state.attempt_number >= self.max_attempt_number
+from script.utils import my_stop_after_attempt, my_wait_exponential, my_before_sleep
 
 def annotate(args: argparse.Namespace, conv_str: str) -> str:
     request_timeout = 6
     for attempt in Retrying(
-        reraise=True, retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+        reraise=True, retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
         wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
     ):
         with attempt:
-            response = openai.Embedding.create(
-                model=args.embedding_model, input=conv_str, request_timeout=request_timeout
+            response = args.openai_client.embeddings.create(
+                model=args.embedding_model, input=conv_str, timeout=request_timeout
             )
         request_timeout = min(30, request_timeout * 2)
 
@@ -79,12 +40,12 @@ def batch_annotate(args: argparse.Namespace, conv_str_list: list[str]) -> str:
     async def fetch_chat_completion(args, conv_str):
         request_timeout = 6
         for attempt in Retrying(
-            reraise=True, retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+            reraise=True, retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
             wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
         ):
             with attempt:
                 response = openai.Embedding.create(
-                    model=args.embedding_model, input=conv_str, request_timeout=request_timeout
+                    model=args.embedding_model, input=conv_str, timeout=request_timeout
                 )
             request_timeout = min(30, request_timeout * 2)
 
@@ -155,11 +116,6 @@ class OPEN_MODEL():
             
         base_generation_LLM = LLM_model_load(self.args)
         self.model = base_generation_LLM['model']
-        if args.use_lora_at_inference:
-            print(f'use lora')
-            from peft import PeftModel
-            self.model = PeftModel.from_pretrained(self.model, f"/home/work/shchoi/iEvaLM-CRS/full_{args.rec_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
-            self.model = self.model.merge_and_unload()
         self.tokenizer = base_generation_LLM['tokenizer']
         
         self.kg_dataset = args.kg_dataset
@@ -396,10 +352,10 @@ If you have enough information about user preference, you can give recommendatio
                     conv_str += f"{context['role']}: {context['content']} "
             conv_str_list.append(conv_str)
         
-        conv_embed_list = annotate(self.args, conv_str_list)['data']
+        conv_embed_list = annotate(self.args, conv_str_list).data
         
         for conv_embed in conv_embed_list:
-            conv_embed = conv_embed['embedding']
+            conv_embed = conv_embed.embedding
             conv_embed = np.asarray(conv_embed).reshape(1, -1)
             
             sim_mat = cosine_similarity(conv_embed, self.item_emb_arr)

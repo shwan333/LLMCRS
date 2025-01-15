@@ -18,6 +18,7 @@ import sys
 sys.path.append("..")
 
 from src.model.recommender import RECOMMENDER
+from utils import my_stop_after_attempt, my_wait_exponential, my_before_sleep
 
 warnings.filterwarnings('ignore')
 
@@ -28,48 +29,6 @@ def get_exist_dialog_set():
         exist_id_set.add(file_id)
     return exist_id_set
 
-
-def my_before_sleep(retry_state):
-    logger.debug(
-        f'Retrying: attempt {retry_state.attempt_number} ended with: {retry_state.outcome}, spend {retry_state.seconds_since_start} in total')
-
-
-class my_wait_exponential(wait_base):
-    def __init__(
-        self,
-        multiplier: typing.Union[int, float] = 1,
-        max: _utils.time_unit_type = _utils.MAX_WAIT,  # noqa
-        exp_base: typing.Union[int, float] = 2,
-        min: _utils.time_unit_type = 0,  # noqa
-    ) -> None:
-        self.multiplier = multiplier
-        self.min = _utils.to_seconds(min)
-        self.max = _utils.to_seconds(max)
-        self.exp_base = exp_base
-
-    def __call__(self, retry_state: "RetryCallState") -> float:
-        if retry_state.outcome == openai.error.Timeout:
-            return 0
-
-        try:
-            exp = self.exp_base ** (retry_state.attempt_number - 1)
-            result = self.multiplier * exp
-        except OverflowError:
-            return self.max
-        return max(max(0, self.min), min(result, self.max))
-
-
-class my_stop_after_attempt(stop_base):
-    """Stop when the previous attempt >= max_attempt."""
-
-    def __init__(self, max_attempt_number: int) -> None:
-        self.max_attempt_number = max_attempt_number
-
-    def __call__(self, retry_state: "RetryCallState") -> bool:
-        if retry_state.outcome == openai.error.Timeout:
-            retry_state.attempt_number -= 1
-        return retry_state.attempt_number >= self.max_attempt_number
-
 def annotate_completion(prompt, logit_bias=None):
     if logit_bias is None:
         logit_bias = {}
@@ -77,7 +36,7 @@ def annotate_completion(prompt, logit_bias=None):
     request_timeout = 20
     for attempt in Retrying(
             reraise=True,
-            retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+            retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
             wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8))
     ):
         with attempt:

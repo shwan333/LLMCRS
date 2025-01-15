@@ -43,7 +43,7 @@ class my_wait_exponential(wait_base):
         self.exp_base = exp_base
 
     def __call__(self, retry_state: "RetryCallState") -> float:
-        if retry_state.outcome == openai.error.Timeout:
+        if retry_state.outcome == openai.APITimeoutError:
             return 0
 
         try:
@@ -61,7 +61,7 @@ class my_stop_after_attempt(stop_base):
         self.max_attempt_number = max_attempt_number
 
     def __call__(self, retry_state: "RetryCallState") -> bool:
-        if retry_state.outcome == openai.error.Timeout:
+        if retry_state.outcome == openai.APITimeoutError:
             retry_state.attempt_number -= 1
         return retry_state.attempt_number >= self.max_attempt_number
     
@@ -104,13 +104,13 @@ def annotate_completion(args: argparse.Namespace, instruct: str, prompt: str, lo
     request_timeout = 20
     for attempt in Retrying(
             reraise=True,
-            retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+            retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
             wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8))
     ):
         with attempt:
-            response = openai.ChatCompletion.create(
+            response = args.openai_client.chat.completions.create(
                 model= args.user_model, messages= messages, temperature= 0, max_tokens= 128, request_timeout=request_timeout, seed = args.seed
-            )['choices'][0]['message']['content']
+            ).choices[0].message.content
         request_timeout = min(300, request_timeout * 2)
 
     return response
@@ -120,21 +120,21 @@ def annotate_batch_completion(args: argparse.Namespace, instruct_list: list[str]
         request_timeout = 60
         for attempt in Retrying(
             reraise=True,
-            retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+            retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
             wait=my_wait_exponential(min=1, max=60),
             stop=(my_stop_after_attempt(8)),
             before_sleep=my_before_sleep
         ):
             with attempt:
-                response = await openai.ChatCompletion.acreate(  # Use `acreate` for async call
+                response = await args.openai_async_client.chat.completions.create(  # Use `acreate` for async call
                     model=args.user_model,
                     messages=messages,
                     temperature=0,
                     max_tokens=128,
-                    request_timeout=request_timeout,
+                    timeout=request_timeout,
                 )
-            request_timeout = min(300, request_timeout * 2)
-        return response['choices'][0]['message']['content']
+        request_timeout = min(300, request_timeout * 2)
+        return response.choices[0].message.content
 
     async def main_async(prompts):
         tasks = [fetch_chat_completion(args, prompt, logit_bias) for prompt in prompts]

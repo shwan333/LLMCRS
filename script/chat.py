@@ -63,11 +63,13 @@ if __name__ == '__main__':
     args.device = f'cuda:{args.gpu_id}'
     with open (f"{args.root_dir}/secret/api.json", "r") as f:
         secret_data = json.load(f)
-    openai.api_key = secret_data['mycredit']
+    openai.api_key = secret_data['openai']
+    args.openai_client = openai.OpenAI(api_key=secret_data['openai'])
+    args.openai_async_client = openai.AsyncOpenAI(api_key=secret_data['openai'])
     if args.use_lora_at_inference:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     else:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     
     if args.rewrite:
         save_dir = f'{save_dir}_rewrite'

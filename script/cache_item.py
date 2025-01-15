@@ -9,53 +9,12 @@ from loguru import logger
 from tenacity import _utils, Retrying, retry_if_not_exception_type
 from tenacity.stop import stop_base
 from tenacity.wait import wait_base
-
-
-def my_before_sleep(retry_state):
-    logger.debug(f'Retrying: attempt {retry_state.attempt_number} ended with: {retry_state.outcome}, spend {retry_state.seconds_since_start} in total')
-
-
-class my_wait_exponential(wait_base):
-    def __init__(
-        self,
-        multiplier: typing.Union[int, float] = 1,
-        max: _utils.time_unit_type = _utils.MAX_WAIT,  # noqa
-        exp_base: typing.Union[int, float] = 2,
-        min: _utils.time_unit_type = 0,  # noqa
-    ) -> None:
-        self.multiplier = multiplier
-        self.min = _utils.to_seconds(min)
-        self.max = _utils.to_seconds(max)
-        self.exp_base = exp_base
-
-    def __call__(self, retry_state: "RetryCallState") -> float:
-        if retry_state.outcome == openai.error.Timeout:
-            return 0
-
-        try:
-            exp = self.exp_base ** (retry_state.attempt_number - 1)
-            result = self.multiplier * exp
-        except OverflowError:
-            return self.max
-        return max(max(0, self.min), min(result, self.max))
-
-
-class my_stop_after_attempt(stop_base):
-    """Stop when the previous attempt >= max_attempt."""
-
-    def __init__(self, max_attempt_number: int) -> None:
-        self.max_attempt_number = max_attempt_number
-
-    def __call__(self, retry_state: "RetryCallState") -> bool:
-        if retry_state.outcome == openai.error.Timeout:
-            retry_state.attempt_number -= 1
-        return retry_state.attempt_number >= self.max_attempt_number
-
+from utils import my_stop_after_attempt, my_wait_exponential, my_before_sleep
 
 def annotate(item_text_list):
     request_timeout = 6
     for attempt in Retrying(
-        reraise=True, retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+        reraise=True, retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
         wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
     ):
         with attempt:
@@ -76,6 +35,16 @@ def get_exist_item_set():
 
 
 if __name__ == '__main__':
+    """
+    id2info file에서 item metatdata를 읽어와서 item embedding을 생성하고 저장하는 코드
+    metadata를 text로 변환하고, 이를 embedding model에 넣어서 embedding을 생성한다. 
+    생성된 embedding을 {id}.json 파일에 저장한다.
+    
+    The code reads item metadata from the id2info file, creates and saves item embeddings.
+    Convert metadata to text and put it into the embedding model to create an embedding.
+    Save the generated embedding in the {id}.json file.
+    """
+    
     parser = ArgumentParser()
     parser.add_argument('--api_key')
     parser.add_argument('--batch_size', default=1, type=int)

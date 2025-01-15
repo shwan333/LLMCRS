@@ -48,7 +48,7 @@ def get_dialog_emb(dialog: dict, embedding_model: str):
         
     request_timeout = 60
     for attempt in Retrying(
-        reraise=True, retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+        reraise=True, retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
         wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
     ):
         with attempt:
@@ -177,7 +177,7 @@ if __name__ == '__main__':
             request_timeout = 60
             
             for attempt in Retrying(
-                reraise=True, retry=retry_if_not_exception_type((openai.error.InvalidRequestError, openai.error.AuthenticationError)),
+                reraise=True, retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
                 wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
             ):
                 with attempt:
