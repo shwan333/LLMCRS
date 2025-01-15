@@ -21,6 +21,9 @@ def get_model_path():
             'Qwen2.5-3B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1',
             'Qwen2.5-7B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/bb46c15ee4bb56c5b63245ef50fd7637234d6f75',
             'Qwen2.5-14B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-14B-Instruct/snapshots/cf98f3b3bbb457ad9e2bb7baf9a0125b6b88caa8',
+            'Falcon3-3B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--tiiuae--Falcon3-3B-Instruct/snapshots/debc1ce254ecb90b7b485b7292e0e98e773a356d',
+            'unsloth-Llama-3.2-3B-Instruct': 'unsloth/Llama-3.2-3B-Instruct',
+            'unsloth-Llama-3.2-1B-Instruct': 'unsloth/Llama-3.2-1B-Instruct',
         }
     
     return model_path
@@ -42,13 +45,32 @@ def LLM_model_load(args):
     generation_model_id = model_path[args.rec_model]
     
     if generation_model_id != None:
-        generation_model_tokenizer = AutoTokenizer.from_pretrained(generation_model_id, padding_side='left')
-        generation_model = AutoModelForCausalLM.from_pretrained(
-            generation_model_id,
-            torch_dtype=torch.bfloat16,
-            device_map=args.device,
-        )
-        generation_model_tokenizer.pad_token = generation_model_tokenizer.eos_token
+        if args.use_unsloth:
+            from unsloth import FastLanguageModel
+            from peft import PeftModel
+            if args.use_lora_at_inference:
+                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
+                generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{args.rec_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
+                generation_model = generation_model.to(args.device)
+                FastLanguageModel.for_inference(generation_model)
+            else:
+                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
+                generation_model = generation_model.to(args.device)
+                FastLanguageModel.for_inference(generation_model)
+        else:
+            generation_model_tokenizer = AutoTokenizer.from_pretrained(generation_model_id, padding_side='left')
+            generation_model = AutoModelForCausalLM.from_pretrained(
+                generation_model_id,
+                torch_dtype=torch.bfloat16,
+                device_map=args.device,
+            )
+            if args.use_lora_at_inference:
+                print(f'use lora')
+                from peft import PeftModel
+                generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{args.rec_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
+                generation_model = generation_model.model.merge_and_unload()
+        if "Llama" in args.rec_model:
+            generation_model_tokenizer.pad_token = generation_model_tokenizer.eos_token # 아마 이거 때문에 qwen이나 Falcon에서 학습이 안 되었던 듯
         generation_model.generation_config.pad_token_id = generation_model_tokenizer.pad_token_id
         generation_model_terminators = [
             generation_model_tokenizer.eos_token_id,
