@@ -50,12 +50,12 @@ def LLM_model_load(args, load_model):
             from unsloth import FastLanguageModel
             from peft import PeftModel
             if args.use_lora_at_inference:
-                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
+                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
                 generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{load_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
                 generation_model = generation_model.to(args.device)
                 FastLanguageModel.for_inference(generation_model)
             else:
-                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
+                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
                 generation_model = generation_model.to(args.device)
                 FastLanguageModel.for_inference(generation_model)
         else:

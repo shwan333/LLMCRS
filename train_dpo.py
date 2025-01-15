@@ -70,7 +70,7 @@ if __name__ == '__main__':
         PatchDPOTrainer()
         args.kg_dataset = args.dataset.split('_')[1]
         model_id = get_model_path()[args.rec_model]
-        model, tokenizer = FastLanguageModel.from_pretrained(model_name = model_id, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto", max_seq_length = args.max_seq_length)
+        model, tokenizer = FastLanguageModel.from_pretrained(model_name = model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto", max_seq_length = args.max_seq_length)
         if "Llama" in args.rec_model:
             tokenizer.pad_token = tokenizer.eos_token
         save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/chat/openmodel_{args.rec_model}/opendialkg_eval/full_non_repeated/dpo_data_temp{args.temperature}_sample_num{args.sample_num}_top{args.top_k}' 
