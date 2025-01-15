@@ -114,7 +114,7 @@ class OPEN_MODEL():
         if self.seed is not None:
             set_seed(self.seed)
             
-        base_generation_LLM = LLM_model_load(self.args, self.args.rec_model)
+        base_generation_LLM = LLM_model_load(self.args, self.args.rec_model, self.args.gpu_id, self.args.use_unsloth)
         self.model = base_generation_LLM['model']
         self.tokenizer = base_generation_LLM['tokenizer']
         

@@ -133,7 +133,7 @@ def annotate_completion(args: argparse.Namespace, instruct: str, prompt: str, lo
             return_tensors="pt",
             return_attention_mask=True,
             return_token_type_ids=False,
-        ).to(args.device)
+        ).to(f"cuda:{args.user_gpu_id}")
 
         outputs = args.user_LLM.generate(
             **input_ids,
@@ -214,7 +214,7 @@ def annotate_batch_completion(args: argparse.Namespace, instruct_list: list[str]
             return_tensors="pt",
             return_attention_mask=True,
             return_token_type_ids=False,
-        ).to(args.device)
+        ).to(f"cuda:{args.user_gpu_id}")
 
         outputs = args.user_LLM.generate(
             **input_ids,

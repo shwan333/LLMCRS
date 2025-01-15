@@ -50,12 +50,12 @@ if __name__ == '__main__':
     parser.add_argument('--inference_mode', type=str, choices = ['single-process', 'multi-process', 'batch'])
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--gpu_id', type=int, default=0)
+    parser.add_argument('--user_gpu_id', type=int, default=1)
     parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test'])
     parser.add_argument('--topK', type=int, default=10)
     parser.add_argument('--history', type=str, default='full')
     parser.add_argument('--use_lora_at_inference', action='store_true')
     parser.add_argument('--rewrite', action='store_true')
-    parser.add_argument('--use_unsloth', action='store_true')
     # remove argument for conventional CRS (refer to iEVALM official repository)
     
     args = parser.parse_args()
@@ -67,17 +67,22 @@ if __name__ == '__main__':
     args.openai_client = openai.OpenAI(api_key=secret_data['openai'])
     args.openai_async_client = openai.AsyncOpenAI(api_key=secret_data['openai'])
     if args.use_lora_at_inference:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     else:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     
     if args.rewrite:
         save_dir = f'{save_dir}_rewrite'
         
+    if 'unsloth' in args.rec_model: args.use_unsloth = True
+    else: args.use_unsloth = False
+    if 'unsloth' in args.user_model: args.user_use_unsloth = True
+    else: args.user_use_unsloth = False
+        
     if check_proprietary_model(args.user_model):
         pass
     else:
-        user_LLM = LLM_model_load(args, args.user_model)
+        user_LLM = LLM_model_load(args, args.user_model, args.user_gpu_id, args.user_use_unsloth)
         args.user_LLM = user_LLM['model']
         args.user_tokenizer = user_LLM['tokenizer']
         

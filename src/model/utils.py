@@ -7,6 +7,7 @@ from rapidfuzz import fuzz, process
 from torch import nn
 from torch.nn import functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from optimum.bettertransformer import BetterTransformer
 
 special_tokens_dict = {
     'pad_token': '<|pad|>'
@@ -38,32 +39,32 @@ def get_model_list():
     
     return model_list
 
-def LLM_model_load(args, load_model):
-
+def LLM_model_load(args, load_model, gpu_id, use_unsloth):
+    device = f"cuda:{gpu_id}"
     model_path = get_model_path()
     
     # LLM load 
     generation_model_id = model_path[load_model]
-    
+    print(f'generation_model_id: {load_model}')
     if generation_model_id != None:
-        if args.use_unsloth:
+        if use_unsloth and gpu_id == args.gpu_id:
+            print(f'use unsloth')
             from unsloth import FastLanguageModel
             from peft import PeftModel
             if args.use_lora_at_inference:
-                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
+                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map=device)
                 generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{load_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
-                generation_model = generation_model.to(args.device)
                 FastLanguageModel.for_inference(generation_model)
             else:
-                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
-                generation_model = generation_model.to(args.device)
+                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map=device)
                 FastLanguageModel.for_inference(generation_model)
         else:
-            generation_model_tokenizer = AutoTokenizer.from_pretrained(generation_model_id, padding_side='left')
+            print(f'use huggingface')
+            generation_model_tokenizer = AutoTokenizer.from_pretrained(generation_model_id, padding_side='left', device_map = device,)
             generation_model = AutoModelForCausalLM.from_pretrained(
                 generation_model_id,
                 torch_dtype=torch.bfloat16,
-                device_map=args.device,
+                device_map=device,
             )
             if args.use_lora_at_inference:
                 print(f'use lora')
