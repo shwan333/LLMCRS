@@ -100,18 +100,64 @@ def annotate_completion(args: argparse.Namespace, instruct: str, prompt: str, lo
         #############
     '''
     messages = [{'role': 'system', 'content': instruct}, {'role': 'user', 'content': prompt}]
+    
+    if check_proprietary_model(args.user_model):
+        request_timeout = 20
+        for attempt in Retrying(
+                reraise=True,
+                retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
+                wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8))
+        ):
+            with attempt:
+                response = args.openai_client.chat.completions.create(
+                    model= args.user_model, messages= messages, temperature= 0, max_tokens= 128, request_timeout=request_timeout, seed = args.seed
+                ).choices[0].message.content
+            request_timeout = min(300, request_timeout * 2)
+    else:
+        formatted_messages = args.user_tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            padding = True,
+        )
+            
+        # Tokenize without padding first to find max length
+        encodings = [args.user_tokenizer.encode(text) for text in formatted_messages]
+        max_length = max(len(encoding) for encoding in encodings)
+            
+        input_ids = args.user_tokenizer(
+            formatted_messages,
+            padding="max_length",
+            truncation=True,
+            max_length=max_length,
+            return_tensors="pt",
+            return_attention_mask=True,
+            return_token_type_ids=False,
+        ).to(args.device)
 
-    request_timeout = 20
-    for attempt in Retrying(
-            reraise=True,
-            retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
-            wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8))
-    ):
-        with attempt:
-            response = args.openai_client.chat.completions.create(
-                model= args.user_model, messages= messages, temperature= 0, max_tokens= 128, request_timeout=request_timeout, seed = args.seed
-            ).choices[0].message.content
-        request_timeout = min(300, request_timeout * 2)
+        outputs = args.user_LLM.generate(
+            **input_ids,
+            num_return_sequences = 1,
+            max_new_tokens=128,
+            eos_token_id=args.user_tokenizer.eos_token_id,
+            temperature=1.0,
+            early_stopping=False,
+            min_length = -1, # 얘만 원래 없음.
+            top_k = 0.0, # 얘만 다름.
+            top_p = 1.0,
+            do_sample = False,
+            pad_token_id = args.user_tokenizer.eos_token_id,
+        )
+
+        responses = []
+        for idx in range(outputs.shape[0]):
+            response = args.user_tokenizer.decode(outputs[idx][input_ids['input_ids'].shape[-1]:], skip_special_tokens=True)
+            responses.append(response.strip())
+        
+        if len(responses) == 1:
+            response = responses[0]
+        else:
+            raise ValueError(f"Multiple responses generated: {responses}")
 
     return response
 
@@ -140,14 +186,57 @@ def annotate_batch_completion(args: argparse.Namespace, instruct_list: list[str]
         tasks = [fetch_chat_completion(args, prompt, logit_bias) for prompt in prompts]
         return await asyncio.gather(*tasks)  # Gather all async tasks
 
-    # Prepare messages for API calls
     messages_list = [
         [{'role': 'system', 'content': instruct}, {'role': 'user', 'content': prompt + "\n#############"}]
         for instruct, prompt in zip(instruct_list, prompt_list)
     ]
+    if check_proprietary_model(args.user_model):
+        # Prepare messages for API calls
+        
+        responses = asyncio.run(main_async(messages_list))
+    else:
+        formatted_messages_list = args.user_tokenizer.apply_chat_template(
+            messages_list,
+            tokenize=False,
+            add_generation_prompt=True,
+            padding = True,
+        )
+            
+        # Tokenize without padding first to find max length
+        encodings = [args.user_tokenizer.encode(text) for text in formatted_messages_list]
+        max_length = max(len(encoding) for encoding in encodings)
+            
+        input_ids = args.user_tokenizer(
+            formatted_messages_list,
+            padding="max_length",
+            truncation=True,
+            max_length=max_length,
+            return_tensors="pt",
+            return_attention_mask=True,
+            return_token_type_ids=False,
+        ).to(args.device)
+
+        outputs = args.user_LLM.generate(
+            **input_ids,
+            num_return_sequences = 1,
+            max_new_tokens=128,
+            eos_token_id=args.user_tokenizer.eos_token_id,
+            temperature=1.0,
+            early_stopping=False,
+            min_length = -1, # 얘만 원래 없음.
+            top_k = 0.0, # 얘만 다름.
+            top_p = 1.0,
+            do_sample = False,
+            pad_token_id = args.user_tokenizer.eos_token_id,
+        )
+
+        responses = []
+        for idx in range(outputs.shape[0]):
+            response = args.user_tokenizer.decode(outputs[idx][input_ids['input_ids'].shape[-1]:], skip_special_tokens=True)
+            responses.append(response.strip())        
 
     # Run the asynchronous tasks and return the results
-    return asyncio.run(main_async(messages_list))
+    return responses
 
 def get_entity_data(args: argparse.Namespace) -> tuple[dict, list]:
     with open(f'{args.root_dir}/data/{args.kg_dataset}/entity2id.json', 'r', encoding="utf-8") as f: # TODO: 1) 이해하기 쉽게 수정 및 2) hard coding 없애기
@@ -239,3 +328,9 @@ def set_seed(seed):
     
 def convert_1d_to_2d(lst, b, k):
     return [lst[i:i + k] for i in range(0, b * k, k)]
+
+def check_proprietary_model(model_name: str) -> bool:
+    if 'gpt' in model_name:
+        return True
+    else:
+        return False

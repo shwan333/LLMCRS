@@ -24,6 +24,7 @@ def get_model_path():
             'Falcon3-3B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--tiiuae--Falcon3-3B-Instruct/snapshots/debc1ce254ecb90b7b485b7292e0e98e773a356d',
             'unsloth-Llama-3.2-3B-Instruct': 'unsloth/Llama-3.2-3B-Instruct',
             'unsloth-Llama-3.2-1B-Instruct': 'unsloth/Llama-3.2-1B-Instruct',
+            'unsloth-Llama-3.1-8B-Instruct': 'unsloth/Meta-Llama-3.1-8B-Instruct',
         }
     
     return model_path
@@ -37,12 +38,12 @@ def get_model_list():
     
     return model_list
 
-def LLM_model_load(args):
+def LLM_model_load(args, load_model):
 
     model_path = get_model_path()
     
     # LLM load 
-    generation_model_id = model_path[args.rec_model]
+    generation_model_id = model_path[load_model]
     
     if generation_model_id != None:
         if args.use_unsloth:
@@ -50,7 +51,7 @@ def LLM_model_load(args):
             from peft import PeftModel
             if args.use_lora_at_inference:
                 generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto")
-                generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{args.rec_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
+                generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{load_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
                 generation_model = generation_model.to(args.device)
                 FastLanguageModel.for_inference(generation_model)
             else:
@@ -67,9 +68,9 @@ def LLM_model_load(args):
             if args.use_lora_at_inference:
                 print(f'use lora')
                 from peft import PeftModel
-                generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{args.rec_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
+                generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{load_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
                 generation_model = generation_model.model.merge_and_unload()
-        if "Llama" in args.rec_model:
+        if "Llama" in load_model:
             generation_model_tokenizer.pad_token = generation_model_tokenizer.eos_token # 아마 이거 때문에 qwen이나 Falcon에서 학습이 안 되었던 듯
         generation_model.generation_config.pad_token_id = generation_model_tokenizer.pad_token_id
         generation_model_terminators = [

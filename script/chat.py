@@ -22,9 +22,9 @@ from multiprocessing import Process
 import sys
 sys.path.append("..")
 
-from src.model.utils import get_entity
+from src.model.utils import get_entity, LLM_model_load
 from src.model.recommender import RECOMMENDER
-from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data
+from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data, check_proprietary_model
 from simulate import simulate_iEvaLM, batch_simulate_iEvaLM, batch_simulate_iEvaLM_rewriting
 
 warnings.filterwarnings('ignore')
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('--crs_model', type=str, choices=['kbrd', 'barcor', 'unicrs', 'chatgpt', 'openmodel'])
     parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small", choices=["text-embedding-3-small"])
     parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
-    parser.add_argument('--user_model', type=str, default = "gpt-4o-mini", choices=["gpt-4o-mini"])
+    parser.add_argument('--user_model', type=str, default = "gpt-4o-mini")
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--resp_max_length', type=int, default = 128)
@@ -73,6 +73,13 @@ if __name__ == '__main__':
     
     if args.rewrite:
         save_dir = f'{save_dir}_rewrite'
+        
+    if check_proprietary_model(args.user_model):
+        pass
+    else:
+        user_LLM = LLM_model_load(args, args.user_model)
+        args.user_LLM = user_LLM['model']
+        args.user_tokenizer = user_LLM['tokenizer']
         
     os.makedirs(save_dir, exist_ok=True)
     random.seed(args.seed)
