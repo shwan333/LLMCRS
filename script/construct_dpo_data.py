@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
     parser.add_argument('--turn_num', type=int, default=5)
     parser.add_argument('--crs_model', type=str, choices=['kbrd', 'barcor', 'unicrs', 'chatgpt', 'openmodel'])
-    parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small", choices=["text-embedding-3-small"])
+    parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small")
     parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
     parser.add_argument('--user_model', type=str, default = "gpt-4o-mini", choices=["gpt-4o-mini"])
     parser.add_argument('--seed', type=int, default=42)
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpu_id', type=int, default=0)
     parser.add_argument('--temperature', type=float, default=1.5)
     parser.add_argument('--beam_num', type=int, default=8)
-    parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test', 'sample'])
+    parser.add_argument('--split', type=str, default='train', choices=['train'])
     parser.add_argument('--use_lora_at_inference', action='store_true')
     parser.add_argument('--topK', type=int, default=50)
     parser.add_argument('--history', type=str, default='full')
@@ -65,7 +65,9 @@ if __name__ == '__main__':
     with open (f"{args.root_dir}/secret/api.json", "r") as f:
         secret_data = json.load(f)
     openai.api_key = secret_data['openai']
-    save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    # save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    
     os.makedirs(save_dir, exist_ok=True)
     set_seed(args.seed)
     

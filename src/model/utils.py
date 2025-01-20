@@ -13,6 +13,14 @@ special_tokens_dict = {
     'pad_token': '<|pad|>'
 }
 
+def get_embedding_model_path():
+    model_path = {
+        'Snowflake/snowflake-arctic-embed-s': '/home/work/shchoi/.cache/huggingface/hub/models--Snowflake--snowflake-arctic-embed-s/snapshots/e596f507467533e48a2e17c007f0e1dacc837b33',
+        'Snowflake/snowflake-arctic-embed-s-tuned': '/home/work/shchoi/iEvaLM-CRS/output/user_Llama-3.1-8B-Instruct/emb_Snowflake/snowflake-arctic-embed-s/openmodel_Llama-3.2-1B-Instruct_top10_full_history/opendialkg_eval/full_non_repeated/train/checkpoint-105',
+    }
+    
+    return model_path
+
 def get_model_path():
     model_path = {
             'Llama-3.1-8B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659',

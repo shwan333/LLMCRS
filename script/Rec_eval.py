@@ -20,13 +20,13 @@ def rec_eval(turn_num, mode):
         entity2id = json.load(f)
     
     metric = RecMetric([1, 5, 10, 25, 50])
-    # persuatiness = 0
+    
     if args.use_lora_at_inference:
-        save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
-        result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}_lora"
+        save_path = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        result_path = f"../save_{args.turn_num}/result/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_lora/{args.split}"
     else:
-        save_path = f'{args.root_dir}/save_{args.turn_num}/{args.mode}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}' 
-        result_path = f"../save_{args.turn_num}/result/{args.mode}/{args.crs_model}_{args.rec_model}"
+        save_path = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        result_path = f"../save_{args.turn_num}/result/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}/{args.split}"
     
     if args.rewrite:
         save_path = f'{save_path}_rewrite'
@@ -78,10 +78,13 @@ if __name__ == '__main__':
     parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
     parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
-    parser.add_argument('--topK', default = 50, type=int)
+    parser.add_argument('--user_model', type=str, default = "gpt-4o-mini")
+    parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small")
+    parser.add_argument('--topK', default = 10, type=int)
     parser.add_argument('--history', default = 'full', type=str)
     parser.add_argument('--use_lora_at_inference', action='store_true')
     parser.add_argument('--rewrite', action='store_true')
+    parser.add_argument('--split', type=str)
     
     args = parser.parse_args()
     args.root_dir = os.path.dirname(os.getcwd())

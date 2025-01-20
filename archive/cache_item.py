@@ -11,15 +11,15 @@ from tenacity.stop import stop_base
 from tenacity.wait import wait_base
 from utils import my_stop_after_attempt, my_wait_exponential, my_before_sleep
 
-def annotate(item_text_list):
+def annotate(args, item_text_list):
     request_timeout = 6
     for attempt in Retrying(
         reraise=True, retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
         wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
     ):
         with attempt:
-            response = openai.Embedding.create(
-                model='text-embedding-ada-002', input=item_text_list, request_timeout=request_timeout
+            response = args.openai_client.embeddings.create(
+                model=args.embedding_model, input=item_text_list, timeout=request_timeout
             )
         request_timeout = min(30, request_timeout * 2)
 
@@ -46,16 +46,19 @@ if __name__ == '__main__':
     """
     
     parser = ArgumentParser()
-    parser.add_argument('--api_key')
     parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--dataset', type=str, choices=['redial', 'opendialkg'])
+    parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small", choices=["text-embedding-3-small"])
     args = parser.parse_args()
 
-    openai.api_key = args.api_key
+    args.root_dir = os.path.dirname(os.getcwd())
+    with open (f"{args.root_dir}/secret/api.json", "r") as f:
+        secret_data = json.load(f)
+    args.openai_client = openai.Client(api_key=secret_data['mycredit'])
     batch_size = args.batch_size
     dataset = args.dataset
 
-    save_dir = f'../save/embed/item/{dataset}'
+    save_dir = f'../save/embed/item/{dataset}/{args.embedding_model}'
     os.makedirs(save_dir, exist_ok=True)
 
     with open(f'../data/{dataset}/id2info.json', encoding='utf-8') as f:
@@ -115,10 +118,10 @@ if __name__ == '__main__':
             batch_item_ids = random.sample(tuple(item_ids), min(batch_size, len(item_ids)))
             batch_texts = [id2text[item_id] for item_id in batch_item_ids]
 
-        batch_embeds = annotate(batch_texts)['data']
+        batch_embeds = annotate(args, batch_texts).data
         for embed in batch_embeds:
-            item_id = batch_item_ids[embed['index']]
+            item_id = batch_item_ids[embed.index]
             with open(f'{save_dir}/{item_id}.json', 'w', encoding='utf-8') as f:
-                json.dump(embed['embedding'], f, ensure_ascii=False)
+                json.dump(embed.embedding, f, ensure_ascii=False)
 
         item_ids -= get_exist_item_set()

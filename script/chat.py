@@ -41,7 +41,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
     parser.add_argument('--turn_num', type=int, default=5)
     parser.add_argument('--crs_model', type=str, choices=['kbrd', 'barcor', 'unicrs', 'chatgpt', 'openmodel'])
-    parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small", choices=["text-embedding-3-small"])
+    parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small")
     parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
     parser.add_argument('--user_model', type=str, default = "gpt-4o-mini")
     parser.add_argument('--seed', type=int, default=42)
@@ -67,9 +67,9 @@ if __name__ == '__main__':
     args.openai_client = openai.OpenAI(api_key=secret_data['openai'])
     args.openai_async_client = openai.AsyncOpenAI(api_key=secret_data['openai'])
     if args.use_lora_at_inference:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     else:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     
     if args.rewrite:
         save_dir = f'{save_dir}_rewrite'
