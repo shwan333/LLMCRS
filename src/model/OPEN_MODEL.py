@@ -31,51 +31,6 @@ def get_exist_item_set(embedding_path):
         exist_item_set.add(user_id)
     return exist_item_set
 
-# def annotate_chat(args: argparse.Namespace, messages_list: list[list[dict]], logit_bias=None) -> str:
-#     formatted_messages_list = self.tokenizer.apply_chat_template(
-#         messages_list,
-#         tokenize=False,
-#         add_generation_prompt=True,
-#         padding = True,
-#     )
-        
-#     # Tokenize without padding first to find max length
-#     encodings = [self.tokenizer.encode(text) for text in formatted_messages_list]
-#     max_length = max(len(encoding) for encoding in encodings)
-        
-#     input_ids = self.tokenizer(
-#         formatted_messages_list,
-#         padding="max_length",
-#         truncation=True,
-#         max_length=max_length,
-#         return_tensors="pt",
-#         return_attention_mask=True,
-#         return_token_type_ids=False,
-#     ).to(args.device)
-
-#     outputs = self.model.generate(
-#         **input_ids,
-#         num_return_sequences = 1,
-#         max_new_tokens=args.max_new_tokens,
-#         eos_token_id=self.tokenizer.eos_token_id,
-#         # top_k = 3, 
-#         temperature=1.0,
-#         # num_beams = 3,
-#         early_stopping=False,
-#         min_length = -1, # 얘만 원래 없음.
-#         top_k = 0.0, # 얘만 다름.
-#         top_p = 1.0,
-#         do_sample = False,
-#         pad_token_id = self.tokenizer.eos_token_id,
-#     )
-
-#     responses = []
-#     for idx in range(outputs.shape[0]):
-#         response = self.tokenizer.decode(outputs[idx][input_ids['input_ids'].shape[-1]:], skip_special_tokens=True)
-#         responses.append(response.strip())
-    
-#     return responses
-
 class OPEN_MODEL():
     def __init__(self, args: argparse.Namespace) -> None:
         self.args = args
@@ -104,6 +59,7 @@ class OPEN_MODEL():
         with open(f"{self.kg_dataset_path}/id2info.json", 'r', encoding="utf-8") as f:
             self.id2info = json.load(f)
             
+        self.name2id = {info['name']: id for id, info in self.id2info.items()}
         self.id2entityid = {}
         for id, info in self.id2info.items():
             if info['name'] in self.entity2id:
@@ -390,6 +346,7 @@ If you have enough information about user preference, you can give recommendatio
         
         for conv_dict in conv_dict_list:
             rec_labels = [self.entity2id[rec] for rec in conv_dict['rec'] if rec in self.entity2id]
+            rec_labels_list.append(rec_labels)
             
             context = conv_dict['context']
             context_list = [] # for model
@@ -430,7 +387,6 @@ If you have enough information about user preference, you can give recommendatio
             item_rank_arr = [[self.id2entityid[item_id] for item_id in item_rank_arr[0]]]
             
             item_rank_arr_list.append(item_rank_arr)
-            rec_labels_list.append(rec_labels)
         
         return item_rank_arr_list, rec_labels_list
     
