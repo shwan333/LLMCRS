@@ -49,7 +49,7 @@ class OPEN_MODEL():
         if args.embedding_model.startswith('text-embedding'):
             pass
         else:
-            embedding_model_path = get_embedding_model_path()
+            embedding_model_path = get_embedding_model_path(self.args)
             embedding_model_id = embedding_model_path[args.embedding_model]
             self.embedding_model = SentenceTransformer(embedding_model_id, cache_folder = "/home/work/shchoi/.cache/huggingface/hub")
             
@@ -142,17 +142,17 @@ class OPEN_MODEL():
 If you do not have enough information about user preference, you should ask the user for his preference.
 If you have enough information about user preference, you can give recommendation. The recommendation list must contain 10 items that are consistent with user preference. The recommendation list can contain items that the dialog mentioned before. The format of the recommendation list is: no. title. Don't mention anything other than the title of items in your recommendation list.'''
 
-    def annotate(self, args: argparse.Namespace, conv_str):
+    def annotate(self, args: argparse.Namespace, conv_str: str | list[str]):
         if hasattr(self, 'embedding_model'):
             response = self.embedding_model.encode(conv_str)
             if type(response) == np.ndarray:
                 response = response.tolist()
             else:
                 raise ValueError(f"Invalid response type: {type(response)}")
-            if len(response) == 1:
-                response = response[0]
-            else:
+            if type(conv_str) == list:
                 response = [item for item in response]
+            else:
+                response = response[0]
         else:
             request_timeout = 6
             for attempt in Retrying(
