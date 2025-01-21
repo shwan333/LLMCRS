@@ -11,9 +11,7 @@ sys.path.append("..")
 
 from src.model.utils import get_entity
 from src.model.recommender import RECOMMENDER
-from utils import annotate_completion, annotate_batch_completion, process_for_baselines, filter_seeker_text, convert_1d_to_2d
-from turn_level_preference_check import get_dialog_emb
-from preference_utils import cosine_similarity, batch_cosine_similarity
+from utils import annotate_completion, annotate_batch_completion, process_for_baselines, filter_seeker_text, convert_1d_to_2d, cosine_similarity, batch_cosine_similarity
 
 def simulate_iEvaLM(dialog_id: str, data: dict, seeker_instruction_template: str, args: argparse.Namespace, recommender: RECOMMENDER, id2entity: dict, entity_list: list, save_dir: str):
     conv_dict = copy.deepcopy(data) # for model
@@ -278,6 +276,15 @@ def batch_simulate_iEvaLM(dialog_id_list: list[str], dialog_data_list: list[dict
             with open(f'{save_dir}/{dialog_id}.json', 'w', encoding='utf-8') as f: 
                 json.dump(dialog_data_list[idx], f, ensure_ascii=False, indent=2)
             removal_dialog_id_list.append(dialog_id)
+
+def get_dialog_emb(dialog: dict, recommender: RECOMMENDER):
+    conv_str = ""
+    for utterance in dialog:
+        conv_str += f"{utterance['role']}: {utterance['content']} "
+    
+    dialog_emb = recommender.crs_model.annotate(recommender.args, conv_str)
+
+    return dialog_emb
                 
 def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], instruct_list: list[str], prompt_list: list[str], rec_model_prompt: str, save_dir: str, each_context_dict_list: list[dict], 
                   conv_dict_list: list[dict], item_embeddings: np.ndarray, idx: int, title2emb: dict, each_turn: int, recommender: RECOMMENDER):

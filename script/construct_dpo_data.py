@@ -44,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--crs_model', type=str, choices=['kbrd', 'barcor', 'unicrs', 'chatgpt', 'openmodel'])
     parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small")
     parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
-    parser.add_argument('--user_model', type=str, default = "gpt-4o-mini", choices=["gpt-4o-mini"])
+    parser.add_argument('--user_model', type=str, default = "gpt-4o-mini")
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--resp_max_length', type=int, default = 128)

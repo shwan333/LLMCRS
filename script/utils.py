@@ -334,3 +334,27 @@ def check_proprietary_model(model_name: str) -> bool:
         return True
     else:
         return False
+    
+def cosine_similarity(list1, list2):
+    # Convert lists to numpy arrays for vector operations
+    vector1 = np.array(list1)
+    vector2 = np.array(list2)
+
+    # Compute cosine similarity
+    similarity = np.dot(vector1, vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
+    return similarity
+
+def batch_cosine_similarity(query_vector, item_matrix):
+    # Convert query vector to numpy array
+    query_vector = np.array(query_vector)
+    
+    # Compute dot products for all items at once
+    dot_products = np.dot(item_matrix, query_vector)
+    
+    # Compute norms
+    item_norms = np.linalg.norm(item_matrix, axis=1)  # Need norm for each item
+    query_norm = np.linalg.norm(query_vector)         # Only one query norm needed
+    
+    # Compute similarities
+    similarities = dot_products / (item_norms * query_norm)
+    return similarities
