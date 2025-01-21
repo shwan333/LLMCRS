@@ -1,5 +1,6 @@
 import json
 import random
+import os
 from typing import List, Union, Optional
 
 import torch
@@ -13,33 +14,23 @@ special_tokens_dict = {
     'pad_token': '<|pad|>'
 }
 
-def get_embedding_model_path():
-    model_path = {
-        'Snowflake/snowflake-arctic-embed-s': '/home/work/shchoi/.cache/huggingface/hub/models--Snowflake--snowflake-arctic-embed-s/snapshots/e596f507467533e48a2e17c007f0e1dacc837b33',
-        'Snowflake/snowflake-arctic-embed-s-tuned': '/home/work/shchoi/iEvaLM-CRS/output/user_Llama-3.1-8B-Instruct/emb_Snowflake/snowflake-arctic-embed-s/openmodel_Llama-3.2-1B-Instruct_top10_full_history/opendialkg_eval/full_non_repeated/train/checkpoint-105',
-    }
+def get_embedding_model_path(args):
+    model_path = os.path.join(args.root_dir, 'model_path.json')
+    with open(model_path, 'r') as f:
+        model_path = json.load(f)
+    embedding_model_path = model_path["Embedding_model"]
     
-    return model_path
+    return embedding_model_path
 
-def get_model_path():
-    model_path = {
-            'Llama-3.1-8B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659',
-            'Llama-3.2-3B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--meta-llama--Llama-3.2-3B-Instruct/snapshots/392a143b624368100f77a3eafaa4a2468ba50a72',
-            'Llama-3.2-1B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--meta-llama--Llama-3.2-1B-Instruct/snapshots/9213176726f574b556790deb65791e0c5aa438b6',
-            'Qwen2.5-1.5B-Instruct':'/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306',
-            'Qwen2.5-3B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1',
-            'Qwen2.5-7B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/bb46c15ee4bb56c5b63245ef50fd7637234d6f75',
-            'Qwen2.5-14B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--Qwen--Qwen2.5-14B-Instruct/snapshots/cf98f3b3bbb457ad9e2bb7baf9a0125b6b88caa8',
-            'Falcon3-3B-Instruct': '/home/work/shchoi/.cache/huggingface/hub/models--tiiuae--Falcon3-3B-Instruct/snapshots/debc1ce254ecb90b7b485b7292e0e98e773a356d',
-            'unsloth-Llama-3.2-3B-Instruct': 'unsloth/Llama-3.2-3B-Instruct',
-            'unsloth-Llama-3.2-1B-Instruct': 'unsloth/Llama-3.2-1B-Instruct',
-            'unsloth-Llama-3.1-8B-Instruct': 'unsloth/Meta-Llama-3.1-8B-Instruct',
-        }
-    
-    return model_path
+def get_model_path(args):
+    model_path = os.path.join(args.root_dir, 'model_path.json')
+    with open(model_path, 'r') as f:
+        model_path = json.load(f)
+    LM_model_path = model_path["LM"]    
+    return LM_model_path
 
-def get_model_list():
-    model_path = get_model_path()
+def get_model_list(args):
+    model_path = get_model_path(args)
     model_list = []
     for server in model_path.keys():
         for model in model_path[server].keys():
@@ -49,7 +40,7 @@ def get_model_list():
 
 def LLM_model_load(args, load_model, gpu_id, use_unsloth):
     device = f"cuda:{gpu_id}"
-    model_path = get_model_path()
+    model_path = get_model_path(args)
     
     # LLM load 
     generation_model_id = model_path[load_model]
