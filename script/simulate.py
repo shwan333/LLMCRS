@@ -343,7 +343,7 @@ def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], instruct_
     with open(f'{save_dir}/{dialog_id_list[idx]}_{each_turn}.json', 'w', encoding='utf-8') as f: 
         json.dump(save_data, f, ensure_ascii=False, indent=2)
 
-def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], seeker_instruction_template: str, args: argparse.Namespace, recommender: RECOMMENDER, id2entity: dict, entity_list: list, save_dir: str):
+def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], seeker_instruction_template: str, args: argparse.Namespace, recommender: RECOMMENDER, save_dir: str):
     start_time = time.time()
     print("=====================================")
     print(dialog_id_list)

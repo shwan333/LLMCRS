@@ -2,22 +2,12 @@ import argparse
 import copy
 import json
 import os
-import re
 import random
 import time
-import typing
 import warnings
-import tiktoken
 
 import openai
-import nltk
-from loguru import logger
-from thefuzz import fuzz
-from tenacity import Retrying, retry_if_not_exception_type, _utils
-from tenacity.stop import stop_base
-from tenacity.wait import wait_base
 from tqdm import tqdm
-from multiprocessing import Process
 
 import sys
 sys.path.append("..")
@@ -75,7 +65,6 @@ if __name__ == '__main__':
     recommender = RECOMMENDER(args)
 
     recommender_instruction, seeker_instruction_template = get_instruction(args.dataset) # TODO: instruction 받는 형태를 하나로 통일
-    id2entity, entity_list = get_entity_data(args)
     dialog_id2data = get_dialog_data(args)
     dialog_id_set = set(dialog_id2data.keys()) - get_exist_dpo_data(save_dir)
     dialog_id_list = list(dialog_id_set)
@@ -85,7 +74,7 @@ if __name__ == '__main__':
         for dialog_id in tqdm(dialog_id_list, desc="Processing Dialogs"):
             data = dialog_id2data[dialog_id]
             if args.inference_mode == 'single-process':
-                construct_DPO_data(dialog_id, data, seeker_instruction_template, args, recommender, id2entity, entity_list, save_dir)
+                construct_DPO_data(dialog_id, data, seeker_instruction_template, args, recommender, save_dir)
 
     elif args.inference_mode =='batch':
         total_iterations = len(dialog_id_list) // args.batch_size  # Since sample_num is 8
@@ -101,7 +90,7 @@ if __name__ == '__main__':
                 
                 # Data preparation
                 dialog_data_list = [dialog_id2data[dialog_id] for dialog_id in dialog_sub_list]
-                batch_construct_DPO_data(copy.deepcopy(dialog_sub_list), copy.deepcopy(dialog_data_list), seeker_instruction_template, args, recommender, id2entity, entity_list, save_dir)
+                batch_construct_DPO_data(copy.deepcopy(dialog_sub_list), copy.deepcopy(dialog_data_list), seeker_instruction_template, args, recommender, save_dir)
                 
                 # Update progress bar
                 pbar.update(1)
