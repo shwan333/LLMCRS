@@ -105,6 +105,3 @@ if __name__ == '__main__':
                 
                 # Update progress bar
                 pbar.update(1)
-                # except Exception as e:
-                #     print(e)
-                #     print(f'Error in dialog_id_list: {dialog_id_sub_list}')

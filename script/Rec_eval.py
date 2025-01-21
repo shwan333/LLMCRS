@@ -44,9 +44,6 @@ def rec_eval(turn_num, mode):
                 continue
             with open(f"{save_path}/{path}", 'r', encoding="utf-8") as f:
                 data = json.load(f)
-                # if mode == 'chat':
-                #     persuasiveness_score = data['persuasiveness_score']
-                #     persuatiness += float(persuasiveness_score)
                 PE_dialog = data['simulator_dialog']
                 rec_label = data['rec']
                 rec_label = [entity2id[rec] for rec in rec_label if rec in entity2id]
@@ -60,10 +57,6 @@ def rec_eval(turn_num, mode):
         report = metric.report()
         
         print('r1:', f"{report['recall@1']:.3f}", 'r5:', f"{report['recall@5']:.3f}", 'r10:', f"{report['recall@10']:.3f}", 'r25:', f"{report['recall@25']:.3f}", 'r50:', f"{report['recall@50']:.3f}", 'count:', report['count'])
-        # if mode == 'chat':
-        #     persuativeness_score = persuatiness / len(path_list)
-        #     print(f"{persuativeness_score:.3f}")
-        #     report['persuativeness'] = persuativeness_score
         
         with open(f"{result_path}/{args.dataset}_{args.eval_data_size}_{args.eval_strategy}.json", 'w', encoding="utf-8") as w:
             w.write(json.dumps(report))

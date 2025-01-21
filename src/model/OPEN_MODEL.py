@@ -180,19 +180,6 @@ If you have enough information about user preference, you can give recommendatio
             return_tensors="pt"
         ).to(args.device)
 
-        # outputs = self.model.generate(
-        #     input_ids,
-        #     num_beams = args.beam_num,
-        #     num_return_sequences = args.beam_num,
-        #     max_new_tokens=args.resp_max_length,
-        #     eos_token_id=self.tokenizer.eos_token_id,
-        #     pad_token_id=self.tokenizer.eos_token_id,
-        #     do_sample=False,
-        #     temperature=args.temperature,
-        #     top_p=1.0,
-        #     early_stopping=False  # 모든 빔이 EOS에 도달하면 조기 종료
-        # )
-        
         outputs = self.model.generate(
             input_ids,
             num_return_sequences = args.beam_num,
@@ -375,7 +362,7 @@ If you have enough information about user preference, you can give recommendatio
             conv_str_list.append(conv_str)
         
         conv_embed_list = self.annotate(self.args, conv_str_list)
-        
+
         for conv_embed in conv_embed_list:
             conv_embed = conv_embed
             conv_embed = np.asarray(conv_embed).reshape(1, -1)
@@ -415,32 +402,6 @@ If you have enough information about user preference, you can give recommendatio
     
         return gen_str_list
 
-    # def get_conv(self, conv_dict_list) -> list[str]:
-        
-    #     context = conv_dict['context']
-    #     context_list = [] # for model
-    #     context_list.append({
-    #         'role': 'system',
-    #         'content': self.chat_recommender_instruction
-    #     })
-        
-    #     for i, text in enumerate(context):
-    #         if len(text) == 0:
-    #             continue
-    #         if i % 2 == 0:
-    #             role_str = 'user'
-    #         else:
-    #             role_str = 'assistant'
-    #         context_list.append({
-    #             'role': role_str,
-    #             'content': text
-    #         })
-        
-    #     gen_inputs = None
-    #     gen_str = annotate_chat(self.args, context_list)
-        
-    #     return gen_inputs, gen_str
-    
     def get_batch_conv(self, conv_dict_list) -> list[str]:
         
         context_list_list = []
