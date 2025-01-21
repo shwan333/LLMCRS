@@ -17,6 +17,7 @@ from tenacity.wait import wait_base
 from thefuzz import fuzz
 from tqdm import tqdm
 import argparse
+from src.model.recommender import RECOMMENDER
 from script.utils import my_wait_exponential, my_stop_after_attempt, my_before_sleep
 
 def calculate_entropy(similarity_list):
@@ -41,22 +42,23 @@ def slice_dialogue(sample_result_path, additional_turn:int):
     
     return dialogs
 
-def get_dialog_emb(dialog: dict, embedding_model: str):
+def get_dialog_emb(dialog: dict, recommender: RECOMMENDER):
     conv_str = ""
     for utterance in dialog:
         conv_str += f"{utterance['role']}: {utterance['content']} "
-        
-    request_timeout = 60
-    for attempt in Retrying(
-        reraise=True, retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
-        wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
-    ):
-        with attempt:
-            dialog_emb = openai.Embedding.create(
-                model=embedding_model, input=conv_str, request_timeout=request_timeout
-            )
-        request_timeout = min(30, request_timeout * 2)
-    dialog_emb = dialog_emb['data'][0]["embedding"]
+    
+    dialog_emb = recommender.crs_model.annotate(recommender.args, conv_str)
+    # request_timeout = 60
+    # for attempt in Retrying(
+    #     reraise=True, retry=retry_if_not_exception_type((openai.BadRequestError, openai.AuthenticationError)),
+    #     wait=my_wait_exponential(min=1, max=60), stop=(my_stop_after_attempt(8)), before_sleep=my_before_sleep
+    # ):
+    #     with attempt:
+    #         dialog_emb = openai.Embedding.create(
+    #             model=embedding_model, input=conv_str, request_timeout=request_timeout
+    #         )
+    #     request_timeout = min(30, request_timeout * 2)
+    # dialog_emb = dialog_emb['data'][0]["embedding"]
     
     return dialog_emb
 
