@@ -282,7 +282,7 @@ def get_dialog_emb(dialog: dict, recommender: RECOMMENDER):
     for utterance in dialog:
         conv_str += f"{utterance['role']}: {utterance['content']} "
     
-    dialog_emb = recommender.crs_model.annotate(recommender.args, conv_str)
+    dialog_emb = recommender.crs_model.annotate(recommender.crs_model.args, conv_str)
 
     return dialog_emb
                 
@@ -353,14 +353,16 @@ def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], s
     #     with open(emb_file_path, "r") as f:
     #         title2emb = json.load(f)
     name2id = recommender.crs_model.name2id
-    id2itemid = recommender.crs_model.id2itemid
+    id2item_id = recommender.crs_model.id2item_id
     item_emb_list = recommender.crs_model.item_emb_list
+    entity2id = recommender.crs_model.entity2id
     
     title2emb = {}
     for name, id in name2id.items():
-        index = id2itemid.index(id)
-        emb = item_emb_list[index]
-        title2emb[name] = emb
+        if name in entity2id:
+            index = id2item_id.index(id)
+            emb = item_emb_list[index]
+            title2emb[name] = emb
     item_embeddings = np.stack(list(title2emb.values()))
     
     conv_dict_list = [] 
