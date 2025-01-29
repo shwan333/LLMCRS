@@ -5,17 +5,17 @@ import os
 import random
 import time
 import warnings
-
+import torch
 import openai
 from tqdm import tqdm
 
 import sys
 sys.path.append("..")
 
-from src.model.utils import get_entity
+from src.model.utils import get_entity, LLM_model_load
 from src.model.recommender import RECOMMENDER
-from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data, set_seed, get_exist_dpo_data
-from simulate import construct_DPO_data, batch_construct_DPO_data
+from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data, set_seed, get_exist_dpo_data, check_proprietary_model
+from simulate import batch_construct_DPO_data
 
 warnings.filterwarnings('ignore')
 
@@ -41,22 +41,36 @@ if __name__ == '__main__':
     parser.add_argument('--inference_mode', type=str, choices = ['single-process', 'multi-process', 'batch'])
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--gpu_id', type=int, default=0)
+    parser.add_argument('--user_gpu_id', type=int, default=0)
     parser.add_argument('--temperature', type=float, default=1.5)
     parser.add_argument('--beam_num', type=int, default=8)
-    parser.add_argument('--split', type=str, default='train', choices=['train'])
+    parser.add_argument('--split', type=str, default='train')
     parser.add_argument('--use_lora_at_inference', action='store_true')
-    parser.add_argument('--topK', type=int, default=50)
+    parser.add_argument('--topK', type=int, default=10)
     parser.add_argument('--history', type=str, default='full')
-    # remove argument for conventional CRS (refer to iEVALM official repository)
     
+    # remove argument for conventional CRS (refer to iEVALM official repository)
+    torch.multiprocessing.set_start_method('spawn')
     args = parser.parse_args()
     args.root_dir = os.path.dirname(os.getcwd())
     args.device = f'cuda:{args.gpu_id}'
+    if 'unsloth' in args.rec_model: args.use_unsloth = True
+    else: args.use_unsloth = False
+    if 'unsloth' in args.user_model: args.user_use_unsloth = True
+    else: args.user_use_unsloth = False
+
+    if check_proprietary_model(args.user_model):
+        pass
+    else:
+        user_LLM = LLM_model_load(args, args.user_model, args.user_gpu_id, args.user_use_unsloth)
+        args.user_LLM = user_LLM['model']
+        args.user_tokenizer = user_LLM['tokenizer']
+
     with open (f"{args.root_dir}/secret/api.json", "r") as f:
         secret_data = json.load(f)
     openai.api_key = secret_data['openai']
     # save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
-    save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_{args.split}_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
     
     os.makedirs(save_dir, exist_ok=True)
     set_seed(args.seed)
@@ -69,12 +83,7 @@ if __name__ == '__main__':
     dialog_id_set = set(dialog_id2data.keys()) - get_exist_dpo_data(save_dir)
     dialog_id_list = list(dialog_id_set)
     if 'process' in args.inference_mode:
-        if args.inference_mode == 'multi-process':
-            processes = []
-        for dialog_id in tqdm(dialog_id_list, desc="Processing Dialogs"):
-            data = dialog_id2data[dialog_id]
-            if args.inference_mode == 'single-process':
-                construct_DPO_data(dialog_id, data, seeker_instruction_template, args, recommender, save_dir)
+        raise NotImplementedError()
 
     elif args.inference_mode =='batch':
         total_iterations = len(dialog_id_list) // args.batch_size  # Since sample_num is 8

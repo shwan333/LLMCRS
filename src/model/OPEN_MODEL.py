@@ -51,7 +51,7 @@ class OPEN_MODEL():
         else:
             embedding_model_path = get_embedding_model_path(self.args)
             embedding_model_id = embedding_model_path[args.embedding_model]
-            self.embedding_model = SentenceTransformer(embedding_model_id, cache_folder = "/home/work/shchoi/.cache/huggingface/hub")
+            self.embedding_model = SentenceTransformer(embedding_model_id, cache_folder = "/home/work/shchoi/.cache/huggingface/hub", trust_remote_code=True)
             
         self.kg_dataset_path = f"../data/{self.kg_dataset}"
         with open(f"{self.kg_dataset_path}/entity2id.json", 'r', encoding="utf-8") as f:
@@ -67,19 +67,19 @@ class OPEN_MODEL():
         
         self.item_embedding_path = f"../save/embed/item/{self.kg_dataset}/{args.embedding_model}"
         os.makedirs(self.item_embedding_path, exist_ok=True)
-        item_emb_list = []
-        id2item_id = []
+        self.item_emb_list = []
+        self.id2item_id = []
         
         if len(self.id2info) == len(os.listdir(self.item_embedding_path)):
             print("Loading stored item embeddings...")
             for i, file in tqdm(enumerate(os.listdir(self.item_embedding_path)), desc="Processing item embeddings"):
                 item_id = os.path.splitext(file)[0]
                 if item_id in self.id2entityid:
-                    id2item_id.append(item_id)
+                    self.id2item_id.append(item_id)
 
                     with open(f'{self.item_embedding_path}/{file}', encoding='utf-8') as f:
                         embed = json.load(f)
-                        item_emb_list.append(embed)
+                        self.item_emb_list.append(embed)
         else:
             """
             id2info file에서 item metatdata를 읽어와서 item embedding을 생성하고 저장하는 코드
@@ -130,13 +130,13 @@ class OPEN_MODEL():
                         json.dump(embed, f, ensure_ascii=False)
                     
                     if item_id in self.id2entityid:
-                        id2item_id.append(item_id)
-                        item_emb_list.append(embed)
+                        self.id2item_id.append(item_id)
+                        self.item_emb_list.append(embed)
 
                 item_ids -= get_exist_item_set(self.item_embedding_path)
             
-        self.id2item_id_arr = np.asarray(id2item_id)
-        self.item_emb_arr = np.asarray(item_emb_list)
+        self.id2item_id_arr = np.asarray(self.id2item_id)
+        self.item_emb_arr = np.asarray(self.item_emb_list)
             
         self.chat_recommender_instruction = '''You are a recommender chatting with the user to provide recommendation. You must follow the instructions below during chat.
 If you do not have enough information about user preference, you should ask the user for his preference.
@@ -152,7 +152,7 @@ If you have enough information about user preference, you can give recommendatio
             if type(conv_str) == list:
                 response = [item for item in response]
             else:
-                response = response[0]
+                response = response
         else:
             request_timeout = 6
             for attempt in Retrying(
