@@ -7,6 +7,7 @@ import os
 import numpy as np
 from multiprocessing import Process
 import time
+import torch
 sys.path.append("..")
 
 from src.model.utils import get_entity
@@ -285,10 +286,23 @@ def get_dialog_emb(dialog: dict, recommender: RECOMMENDER):
     dialog_emb = recommender.crs_model.annotate(recommender.crs_model.args, conv_str)
 
     return dialog_emb
+
+def get_dialog_list_emb(dialog_list: list[dict], recommender: RECOMMENDER):
+    conv_str_list = []
+    for dialog in dialog_list:
+        conv_str = ""
+        for utterance in dialog:
+            conv_str += f"{utterance['role']}: {utterance['content']} "
+        conv_str_list.append(conv_str)
+    
+    dialog_embs = recommender.crs_model.annotate(recommender.crs_model.args, conv_str_list)
+
+    return dialog_embs
                 
 def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], instruct_list: list[str], prompt_list: list[str], rec_model_prompt: str, save_dir: str, each_context_dict_list: list[dict], 
-                  conv_dict_list: list[dict], item_embeddings: np.ndarray, idx: int, title2emb: dict, each_turn: int, recommender: RECOMMENDER):
-    base_dialog_emb = get_dialog_emb(each_context_dict_list[0][:-2], recommender)
+                  conv_dict_list: list[dict], item_embeddings: np.ndarray, idx: int, title2emb: dict, each_turn: int, base_dialog_emb, each_context_emb_list):
+    
+    # base dialog에 대여 score 계산
     target_item_title = conv_dict_list[idx]['rec'][0] # TODO: 여러 개의 target item을 고려할 수 있도록 수정
     target_item_emb = title2emb[target_item_title]
     all_similarities = batch_cosine_similarity(base_dialog_emb, item_embeddings)
@@ -297,9 +311,9 @@ def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], instruct_
     base_sim = cosine_similarity(base_dialog_emb, target_item_emb) - mean_similarity
 
     # TODO: maxtrix multiplication 연산으로 바꾸어 speed 높이기.
+    # 각 dialog에 대하여 score 계산
     diff_sim_list = []
-    for each_context_dict in each_context_dict_list:
-        dialog_emb = get_dialog_emb(each_context_dict, recommender)
+    for dialog_emb in each_context_emb_list:
         all_similarities = batch_cosine_similarity(dialog_emb, item_embeddings)
         mean_similarity = np.mean(all_similarities)
         sim = cosine_similarity(dialog_emb, target_item_emb) - mean_similarity
@@ -342,6 +356,19 @@ def save_dpo_data(args: argparse.Namespace, dialog_id_list: list[str], instruct_
     # save
     with open(f'{save_dir}/{dialog_id_list[idx]}_{each_turn}.json', 'w', encoding='utf-8') as f: 
         json.dump(save_data, f, ensure_ascii=False, indent=2)
+        
+def cosine_similarity(A, B):
+    dot_products = A @ B.T
+
+    # 2) Compute row norms for A and B
+    A_norms = A.norm(dim=1)       # shape (N,)
+    B_norms = B.norm(dim=1)       # shape (M,)
+
+    # 3) Divide elementwise to get the NxM matrix of cosine similarities
+    # Reshape norms to broadcast across rows and columns
+    cos_sim_matrix = dot_products / (A_norms.unsqueeze(1) * B_norms.unsqueeze(0))
+
+    return cos_sim_matrix
 
 def batch_construct_DPO_data(dialog_id_list: list[str], data_list: list[dict], seeker_instruction_template: str, args: argparse.Namespace, recommender: RECOMMENDER, save_dir: str):
     start_time = time.time()
@@ -421,6 +448,7 @@ Below is Conversation History\n
     for each_turn in range(0, args.turn_num):
         print(f"Turn {each_turn}")
         start_time = time.time()
+
         # for current turn DPO data construction
         current_turn_context_dict_list = []
         current_turn_seeker_prompt_list = []
@@ -430,6 +458,7 @@ Below is Conversation History\n
                 current_turn_context_dict_list.append(copy.deepcopy(context_dict_list[i]))
                 current_turn_seeker_prompt_list.append(copy.deepcopy(seeker_prompt_list[i]))
                 current_turn_seeker_instruct_list.append(copy.deepcopy(seeker_instruct_list[i]))
+
         # Recommendation
         rec_items_list, rec_labels_list = recommender.get_batch_rec(conv_dict_list)
         print(f'recommendation time: {(time.time() - start_time):.2f}s')
@@ -484,8 +513,9 @@ Below is Conversation History\n
             conv_dict_list[idx]['context'].append(seeker_text)
             seeker_prompt_list[idx] += f'Seeker: {seeker_response}\n'
         
-        print(f'each_turn_time: {time.time() - start_time}s')
+        print(f'each_turn_time: {(time.time() - start_time):.2f}s')
         start_time = time.time()
+
         # DPO data construction
         assert len(current_turn_context_dict_list) == len(recommender_text_list)
         for idx in range(len(current_turn_context_dict_list)):
@@ -493,6 +523,7 @@ Below is Conversation History\n
                 'role': 'assistant',
                 'content': recommender_text_list[idx],
             })
+            current_turn_seeker_prompt_list[idx] += f'Recommender: {recommender_text_list[idx]}\n'
             
         seeker_text_list = annotate_batch_completion(args, current_turn_seeker_instruct_list, current_turn_seeker_prompt_list)
         print(f'seeker_response for DPO: {(time.time() - start_time):.2f}s')
@@ -506,19 +537,113 @@ Below is Conversation History\n
         
         processes = []
         rec_model_prompt = recommender.crs_model.chat_recommender_instruction
-        base_context_dict = [current_turn_context_dict_list[args.beam_num * idx][:-2] for idx in range(len(context_dict_list))] # TODO: save_dpo_data 이전에 gpu 사용하는 task 모두 수행시켜두기.
+        base_context_dict_list = [context_dict[:-2] for context_dict in context_dict_list] # TODO: save_dpo_data 이전에 gpu 사용하는 task 모두 수행시켜두기.
+        base_context_dict_list.extend(current_turn_context_dict_list)
         
+        dialog_embs = get_dialog_list_emb(base_context_dict_list, recommender)
+        
+        dialog_embs = torch.tensor(dialog_embs, dtype=torch.float).to(args.device)
+        item_embeddings = torch.tensor(item_embeddings, dtype=torch.float).to(args.device)
+        
+        cosine_similarity_matrix = cosine_similarity(dialog_embs, item_embeddings) # size: (batch_size * (beam_num+1), item_num)
+        mean_similarties = torch.mean(cosine_similarity_matrix, dim=1) # size: (batch_size * (beam_num+1))
+        base_mean_similarities = mean_similarties[:len(context_dict_list)] # size: (batch_size)
+        current_turn_mean_similarities = mean_similarties[len(context_dict_list):] # size: (batch_size * beam_num)
+        
+        target_items = []        
+        for conv_dict in conv_dict_list:
+            target_item_title_list = conv_dict['rec']
+            for target_item_title in target_item_title_list:
+                target_items.append(title2emb[target_item_title])
+        
+        target_items = torch.tensor(target_items).to(args.device)
+        target_cosine_similarities = cosine_similarity(dialog_embs, target_items) # size: (batch_size * (beam_num+1), item_num)
+        base_target_cosine_similarities = target_cosine_similarities[:len(context_dict_list)] # size: (batch_size , item_num)
+        each_current_turn_target_cosine_similarities = target_cosine_similarities[len(context_dict_list):] # size: (batch_size * beam_num , item_num)
+        
+        prev = 0
         for idx in range(len(context_dict_list)):
             each_context_dict_list = current_turn_context_dict_list[args.beam_num * idx: args.beam_num * (idx + 1)]
             each_seeker_prompt_list = current_turn_seeker_prompt_list[args.beam_num * idx: args.beam_num * (idx + 1)]
             each_seeker_instruct_list = current_turn_seeker_instruct_list[args.beam_num * idx: args.beam_num * (idx + 1)]
             
-            p = Process(target=save_dpo_data,
-                        args=(args, dialog_id_list, each_seeker_instruct_list, each_seeker_prompt_list, rec_model_prompt, save_dir, each_context_dict_list, conv_dict_list, item_embeddings, idx, title2emb, each_turn, recommender))
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
+            base_dialog_mean_similarity = base_mean_similarities[idx]
+            each_current_turn_mean_similarity = current_turn_mean_similarities[args.beam_num * idx: args.beam_num * (idx + 1)]
+
+            base_target_cosine_similarity = base_target_cosine_similarities[idx, prev: prev + len(conv_dict_list[idx]['rec'])]
+            if base_target_cosine_similarity.size()[0] == 1: 
+                pass
+            else:
+                base_target_cosine_similarity = torch.mean(base_target_cosine_similarity, dim=0)
+                
+            each_current_turn_target_cosine_similarity = each_current_turn_target_cosine_similarities[args.beam_num * idx: args.beam_num * (idx + 1), prev: prev + len(conv_dict_list[idx]['rec'])]
+            if each_current_turn_target_cosine_similarity.dim() == 1:
+                pass
+            else:
+                each_current_turn_target_cosine_similarity = torch.mean(each_current_turn_target_cosine_similarity, dim=1)
+            
+            prev = prev + len(conv_dict_list[idx]['rec'])
+            
+            base_score = base_target_cosine_similarity - base_dialog_mean_similarity
+            each_current_turn_score = each_current_turn_target_cosine_similarity - each_current_turn_mean_similarity
+            diff_score = each_current_turn_score - base_score
+            
+            max_idx = torch.argmax(diff_score)
+            min_idx = torch.argmin(diff_score)
+            
+            if max_idx == min_idx:
+                print(f'diff_score: {diff_score}')
+                print(f'each_current_turn_score: {each_current_turn_score}')
+                print(f'base_score: {base_score}')
+                print("================")
+            
+            pos_dialog = each_context_dict_list[max_idx]
+            neg_dialog = each_context_dict_list[min_idx]
+            pos_score = diff_score[max_idx]
+            neg_score = diff_score[min_idx]
+            
+            pos_seeker_prompt = each_seeker_prompt_list[max_idx]
+            neg_seeker_prompt = each_seeker_prompt_list[min_idx]
+            pos_seeker_instruct = each_seeker_instruct_list[max_idx]
+            neg_seeker_instruct = each_seeker_instruct_list[min_idx]
+            
+            assert pos_seeker_instruct == neg_seeker_instruct
+            
+            total_seeker_prompt = [{'role': 'system', 'content': pos_seeker_instruct}, {'role': 'user', 'content': pos_seeker_prompt + "\n#############"}]
+            
+            for dialog in [pos_dialog, neg_dialog]:
+                for i, context_dict_element in enumerate(dialog):
+                    for key in list(context_dict_element.keys()):
+                        if key not in ['role', 'content']:
+                            context_dict_element.pop(key)
+                            
+            # save chosen and rejected
+            save_data = {
+                'chosen': pos_dialog,
+                'rejected': neg_dialog,
+                'seeker_prompt': total_seeker_prompt,
+                'recommender_prompt': rec_model_prompt,
+                'chosen_score': pos_score.item(),
+                'rejected_score': neg_score.item()
+            }
+            
+            # save
+            with open(f'{save_dir}/{dialog_id_list[idx]}_{each_turn}.json', 'w', encoding='utf-8') as f:
+                json.dump(save_data, f, ensure_ascii=False, indent=2)
+            
+        # for idx in range(len(context_dict_list)):
+        #     base_dialog_emb = base_dialog_emb_list[idx]
+        #     each_context_emb_list = current_turn_dialog_emb_list[args.beam_num * idx: args.beam_num * (idx + 1)]
+        #     each_context_dict_list = current_turn_context_dict_list[args.beam_num * idx: args.beam_num * (idx + 1)]
+        #     each_seeker_prompt_list = current_turn_seeker_prompt_list[args.beam_num * idx: args.beam_num * (idx + 1)]
+        #     each_seeker_instruct_list = current_turn_seeker_instruct_list[args.beam_num * idx: args.beam_num * (idx + 1)]
+            
+        #     p = Process(target=save_dpo_data,
+        #                 args=(args, dialog_id_list, each_seeker_instruct_list, each_seeker_prompt_list, rec_model_prompt, save_dir, each_context_dict_list, conv_dict_list, item_embeddings, idx, title2emb, each_turn, base_dialog_emb, each_context_emb_list))
+        #     p.start()
+        #     processes.append(p)
+        # for p in processes:
+        #     p.join()
         print(f'dpo_data_construction&save: {(time.time() - start_time):.2f}s')
             
         # Turn Stop
