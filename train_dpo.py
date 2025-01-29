@@ -6,9 +6,6 @@ from peft import LoraConfig
 import torch, json, os, argparse
 from src.model.utils import get_model_path
 
-from unsloth import FastLanguageModel, PatchDPOTrainer
-from unsloth import is_bfloat16_supported
-
 import torch
 from transformers import TrainingArguments
 from trl import DPOTrainer
@@ -31,6 +28,8 @@ def create_triplets(example, tokenizer):
     assert chosen_prompt_messages == rejected_prompt_messages, "Prompt messages are different for chosen and rejected responses"
     
     prompt_messages = chosen_prompt_messages
+    if prompt_messages[-1]['role'] == 'assistant':
+        print(f'Prompt messages: {prompt_messages}')
     sys_instrunction = {
         'role': 'system',
         'content': example['recommender_prompt'],
@@ -56,16 +55,49 @@ def create_triplets(example, tokenizer):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, choices=['redial_eval', 'opendialkg_eval'])
-    parser.add_argument('--rec_model', type=str)
+    parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small")
+    parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
+    parser.add_argument('--user_model', type=str, default = "gpt-4o-mini")
+    parser.add_argument('--crs_model', type=str, choices=['kbrd', 'barcor', 'unicrs', 'chatgpt', 'openmodel'])
     parser.add_argument('--use_unsloth', action='store_true')
     parser.add_argument('--temperature', type=float)
-    parser.add_argument('--sample_num', type=int)
-    parser.add_argument('--top_k', type=int)
+    parser.add_argument('--beam_num', type=int)
+    parser.add_argument('--topK', type=int)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--max_seq_length', type=int, default=512)
     parser.add_argument('--rank', type=int, default=4)
+    parser.add_argument('--gpu_id', type=int, default=0)
+    parser.add_argument('--history', type=str, default='full')
+    parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
+    parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
+    
     args = parser.parse_args()
+
+    gradient_accumulation_steps = 32
+    epochs = 3
+    lr = 5e-5
+    output_dir = f"pref_tuned/{args.rec_model}_{args.embedding_model}_{args.dataset}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}"
+
+    if 'unsloth' in args.rec_model: args.use_unsloth = True
+    else: args.use_unsloth = False
+    if 'unsloth' in args.user_model: args.user_use_unsloth = True
+    else: args.user_use_unsloth = False
+    args.root_dir = os.getcwd()
+    print(f'root_dir: {args.root_dir}')
+    save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    print(f'save_dir: {save_dir}')
+
+    dialog_data_list = []
+    for file in os.listdir(save_dir):
+        file_path = os.path.join(save_dir, file)
+        if os.path.isdir(file_path):
+            continue
+        dialog_data = json.load(open(file_path, 'r'))
+        dialog_data_list.append(dialog_data)
+    
     if args.use_unsloth:
+        from unsloth import FastLanguageModel, PatchDPOTrainer
+        from unsloth import is_bfloat16_supported
         print(f'Using unsloth for training')
         PatchDPOTrainer()
         args.kg_dataset = args.dataset.split('_')[1]
@@ -73,19 +105,13 @@ if __name__ == '__main__':
         model, tokenizer = FastLanguageModel.from_pretrained(model_name = model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto", max_seq_length = args.max_seq_length)
         if "Llama" in args.rec_model:
             tokenizer.pad_token = tokenizer.eos_token
-        save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/chat/openmodel_{args.rec_model}/opendialkg_eval/full_non_repeated/dpo_data_temp{args.temperature}_sample_num{args.sample_num}_top{args.top_k}' 
-        dialog_data_list = []
-        for file in os.listdir(save_dir):
-            file_path = os.path.join(save_dir, file)
-            if os.path.isdir(file_path):
-                continue
-            dialog_data = json.load(open(file_path, 'r'))
-            dialog_data_list.append(dialog_data)
+        
         train_dataset = Dataset.from_list(dialog_data_list)
         train_dataset = train_dataset.map(create_triplets, remove_columns=train_dataset.features, fn_kwargs={"tokenizer": tokenizer})
 
         # print size of train_dataset
         print(f"Number of dialogues: {len(train_dataset)}")
+
         model = FastLanguageModel.get_peft_model(
             model,
             # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
@@ -93,6 +119,7 @@ if __name__ == '__main__':
             random_state = args.seed,
             max_seq_length = args.max_seq_length,
             r=args.rank,
+            use_rslora=True,
             lora_alpha=4*args.rank,
             lora_dropout=0.0,
             target_modules=[
@@ -106,11 +133,9 @@ if __name__ == '__main__':
             ],
             bias="none",
         )
-        gradient_accumulation_steps = 32
-        epochs = 3
-        lr = 5e-5
+
         training_args = TrainingArguments(
-            output_dir=f"full_{args.rec_model}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}", 
+            output_dir=output_dir, 
             logging_steps=10,
             per_device_train_batch_size = 1,
             gradient_accumulation_steps = gradient_accumulation_steps,
@@ -132,31 +157,26 @@ if __name__ == '__main__':
         dpo_trainer.train()
     else:
         args.kg_dataset = args.dataset.split('_')[1]
-        model_id = get_model_path()[args.rec_model]
+        model_id = get_model_path(args)[args.rec_model]
+        print(args.gpu_id)
         model = AutoModelForCausalLM.from_pretrained(
             model_id, 
             cache_dir="/home/work/shchoi/.cache/huggingface/hub",
             torch_dtype=torch.bfloat16,
-            device_map={"": 1},
-            ).to('cuda:0')
+            ).to(f'cuda:{args.gpu_id}')
         # import time
         # time.sleep(10)
         tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir="/home/work/shchoi/.cache/huggingface/hub")
         if "Llama" in args.rec_model:
             tokenizer.pad_token = tokenizer.eos_token
-        save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/chat/openmodel_{args.rec_model}/opendialkg_eval/full_non_repeated/dpo_data' 
-        dialog_data_list = []
-        for file in os.listdir(save_dir):
-            file_path = os.path.join(save_dir, file)
-            if os.path.isdir(file_path):
-                continue
-            dialog_data = json.load(open(file_path, 'r'))
-            dialog_data_list.append(dialog_data)
+
         train_dataset = Dataset.from_list(dialog_data_list)
+        train_dataset = train_dataset.map(create_triplets, remove_columns=train_dataset.features, fn_kwargs={"tokenizer": tokenizer})
 
         # print size of train_dataset
         print(f"Number of dialogues: {len(train_dataset)}")
 
+        # print size of train_dataset
         peft_config = LoraConfig(
             r=args.rank,
             lora_alpha=args.rank*4,
@@ -173,12 +193,10 @@ if __name__ == '__main__':
             bias="none",
             task_type="CAUSAL_LM",
         )
-        gradient_accumulation_steps = 32
-        epochs = 3
-        lr = 5e-5
+
 
         training_args = DPOConfig(
-            output_dir=f"full_{args.rec_model}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}", 
+            output_dir=output_dir, 
             logging_steps=10,
             per_device_train_batch_size=1,  # Start with small batch size
             gradient_accumulation_steps=gradient_accumulation_steps,  # Increase effective batch size 
@@ -188,6 +206,7 @@ if __name__ == '__main__':
             # gradient_checkpointing=True,
             learning_rate=lr,
             bf16=True,
+            warmup_ratio = 0.1,
             # remove_unused_columns=False,
             # run_name="dpo_llama2",
             seed=42,
