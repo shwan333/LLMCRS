@@ -546,7 +546,11 @@ Below is Conversation History\n
         item_embeddings = torch.tensor(item_embeddings, dtype=torch.float).to(args.device)
         
         cosine_similarity_matrix = cosine_similarity(dialog_embs, item_embeddings) # size: (batch_size * (beam_num+1), item_num)
-        mean_similarties = torch.mean(cosine_similarity_matrix, dim=1) # size: (batch_size * (beam_num+1))
+        if args.reward_func_topK == -1:
+            mean_similarties = torch.mean(cosine_similarity_matrix, dim=1) # size: (batch_size * (beam_num+1))
+        else:
+            topK_cosine_similarity_matrix = torch.topk(cosine_similarity_matrix, args.topK, dim=1)
+            mean_similarties = torch.mean(topK_cosine_similarity_matrix.values, dim=1) # size: (batch_size * (beam_num+1))
         base_mean_similarities = mean_similarties[:len(context_dict_list)] # size: (batch_size)
         current_turn_mean_similarities = mean_similarties[len(context_dict_list):] # size: (batch_size * beam_num)
         
