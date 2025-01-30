@@ -47,7 +47,9 @@ if __name__ == '__main__':
     parser.add_argument('--split', type=str, default='train')
     parser.add_argument('--use_lora_at_inference', action='store_true')
     parser.add_argument('--topK', type=int, default=10)
+    parser.add_argument('--reward_func_topK', type=int, default=10, choices =[-1, 1, 5, 10, 20, 30, 50, 100])
     parser.add_argument('--history', type=str, default='full')
+    parser.add_argument('--rank', type=int, default=32)
     
     # remove argument for conventional CRS (refer to iEVALM official repository)
     torch.multiprocessing.set_start_method('spawn')
@@ -103,3 +105,101 @@ if __name__ == '__main__':
                 
                 # Update progress bar
                 pbar.update(1)
+                
+    
+    # train_dpo.py
+    from datasets import load_dataset, Dataset
+    from trl import DPOConfig, DPOTrainer
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from peft import LoraConfig
+    import torch, json, os, argparse
+    from src.model.utils import get_model_path
+
+    import torch
+    from transformers import TrainingArguments
+    from trl import DPOTrainer
+    from train_dpo import create_triplets
+    print("=====================================")
+    print("start training DPO")
+    gradient_accumulation_steps = 32
+    epochs = 3
+    lr = 5e-5
+    output_dir = f"pref_tuned/{args.rec_model}_{args.embedding_model}_{args.dataset}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}"
+
+    if 'unsloth' in args.rec_model: args.use_unsloth = True
+    else: args.use_unsloth = False
+    if 'unsloth' in args.user_model: args.user_use_unsloth = True
+    else: args.user_use_unsloth = False
+    args.root_dir = os.getcwd()
+    # find the parent directory of root_dir
+    while args.root_dir.split('/')[-1] != 'iEvaLM-CRS':
+        args.root_dir = os.path.dirname(args.root_dir)
+    print(f'root_dir: {args.root_dir}')
+    save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    print(f'save_dir: {save_dir}')
+
+    dialog_data_list = []
+    for file in os.listdir(save_dir):
+        file_path = os.path.join(save_dir, file)
+        if os.path.isdir(file_path):
+            continue
+        dialog_data = json.load(open(file_path, 'r'))
+        dialog_data_list.append(dialog_data)
+        
+    args.kg_dataset = args.dataset.split('_')[1]
+    model_id = get_model_path(args)[args.rec_model]
+    print(args.gpu_id)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id, 
+        cache_dir="/home/work/shchoi/.cache/huggingface/hub",
+        torch_dtype=torch.bfloat16,
+        ).to(f'cuda:{args.gpu_id}')
+    # import time
+    # time.sleep(10)
+    tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir="/home/work/shchoi/.cache/huggingface/hub")
+    if "Llama" in args.rec_model:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    train_dataset = Dataset.from_list(dialog_data_list)
+    train_dataset = train_dataset.map(create_triplets, remove_columns=train_dataset.features, fn_kwargs={"tokenizer": tokenizer})
+
+    # print size of train_dataset
+    print(f"Number of dialogues: {len(train_dataset)}")
+
+    # print size of train_dataset
+    peft_config = LoraConfig(
+        r=args.rank,
+        lora_alpha=args.rank*4,
+        lora_dropout=0.05,
+        target_modules=[
+            'q_proj',
+            'v_proj',
+            'k_proj',
+            'o_proj',
+            'gate_proj',
+            'up_proj',
+            'down_proj',
+        ],
+        bias="none",
+        task_type="CAUSAL_LM",
+    )
+
+
+    training_args = DPOConfig(
+        output_dir=output_dir, 
+        logging_steps=10,
+        per_device_train_batch_size=1,  # Start with small batch size
+        gradient_accumulation_steps=gradient_accumulation_steps,  # Increase effective batch size 
+        num_train_epochs = epochs,
+        # max_steps=1000,
+        # save_steps=100,
+        # gradient_checkpointing=True,
+        learning_rate=lr,
+        bf16=True,
+        warmup_ratio = 0.1,
+        # remove_unused_columns=False,
+        # run_name="dpo_llama2",
+        seed=42,
+    )
+    trainer = DPOTrainer(model=model, args=training_args, processing_class=tokenizer, train_dataset=train_dataset, peft_config=peft_config)
+    trainer.train()
