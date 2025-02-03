@@ -83,6 +83,7 @@ if __name__ == '__main__':
     if 'unsloth' in args.user_model: args.user_use_unsloth = True
     else: args.user_use_unsloth = False
     args.root_dir = os.getcwd()
+    args.cache_dir = "/data1/shchoi/LLM_ckp/hub"
     print(f'root_dir: {args.root_dir}')
     save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
     print(f'save_dir: {save_dir}')
@@ -102,7 +103,7 @@ if __name__ == '__main__':
         PatchDPOTrainer()
         args.kg_dataset = args.dataset.split('_')[1]
         model_id = get_model_path()[args.rec_model]
-        model, tokenizer = FastLanguageModel.from_pretrained(model_name = model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map="auto", max_seq_length = args.max_seq_length)
+        model, tokenizer = FastLanguageModel.from_pretrained(model_name = model_id, load_in_4bit = False, cache_dir = args.cache_dir, device_map="auto", max_seq_length = args.max_seq_length)
         if "Llama" in args.rec_model:
             tokenizer.pad_token = tokenizer.eos_token
         
@@ -161,12 +162,12 @@ if __name__ == '__main__':
         print(args.gpu_id)
         model = AutoModelForCausalLM.from_pretrained(
             model_id, 
-            cache_dir="/home/work/shchoi/.cache/huggingface/hub",
+            cache_dir=args.cache_dir,
             torch_dtype=torch.bfloat16,
             ).to(f'cuda:{args.gpu_id}')
         # import time
         # time.sleep(10)
-        tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir="/home/work/shchoi/.cache/huggingface/hub")
+        tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=args.cache_dir)
         if "Llama" in args.rec_model:
             tokenizer.pad_token = tokenizer.eos_token
 

@@ -21,7 +21,7 @@ from tenacity.wait import wait_base
 from thefuzz import fuzz
 from tqdm import tqdm
 
-from .utils import LLM_model_load, get_embedding_model_path
+from .utils import LLM_model_load, get_embedding_model_path, get_adapter_path
 from script.utils import my_stop_after_attempt, my_wait_exponential, my_before_sleep
 
 def get_exist_item_set(embedding_path):
@@ -51,7 +51,8 @@ class OPEN_MODEL():
         else:
             embedding_model_path = get_embedding_model_path(self.args)
             embedding_model_id = embedding_model_path[args.embedding_model]
-            self.embedding_model = SentenceTransformer(embedding_model_id, cache_folder = "/home/work/shchoi/.cache/huggingface/hub", trust_remote_code=True)
+            print(f'embedding_model_id: {embedding_model_id}')
+            self.embedding_model = SentenceTransformer(embedding_model_id, cache_folder = args.cache_dir, trust_remote_code=True)
             
         self.kg_dataset_path = f"../data/{self.kg_dataset}"
         with open(f"{self.kg_dataset_path}/entity2id.json", 'r', encoding="utf-8") as f:

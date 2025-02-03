@@ -7,7 +7,6 @@ import random
 import time
 import typing
 import warnings
-import tiktoken
 
 import openai
 import nltk
@@ -35,8 +34,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--api_key')
-    parser.add_argument('--dataset', type=str, choices=['redial_eval', 'opendialkg_eval'])
-    parser.add_argument('--kg_dataset', type=str, choices=['redial', 'opendialkg'])
+    parser.add_argument('--dataset', type=str, choices=['redial_eval', 'opendialkg_eval'], default='opendialkg_eval')
+    parser.add_argument('--kg_dataset', type=str, choices=['redial', 'opendialkg'], default='opendialkg')
     parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
     parser.add_argument('--turn_num', type=int, default=5)
@@ -54,20 +53,22 @@ if __name__ == '__main__':
     parser.add_argument('--split', type=str, default='train', choices=['train', 'valid', 'test'])
     parser.add_argument('--topK', type=int, default=10)
     parser.add_argument('--history', type=str, default='full')
-    parser.add_argument('--use_lora_at_inference', action='store_true')
+    parser.add_argument('--adapter', type=str, default=None)
     parser.add_argument('--rewrite', action='store_true')
     # remove argument for conventional CRS (refer to iEVALM official repository)
     
     args = parser.parse_args()
     args.root_dir = os.path.dirname(os.getcwd())
     args.device = f'cuda:{args.gpu_id}'
+    args.cache_dir = "/data1/shchoi/LLM_ckp/hub"
+    
     with open (f"{args.root_dir}/secret/api.json", "r") as f:
         secret_data = json.load(f)
     openai.api_key = secret_data['openai']
     args.openai_client = openai.OpenAI(api_key=secret_data['openai'])
     args.openai_async_client = openai.AsyncOpenAI(api_key=secret_data['openai'])
-    if args.use_lora_at_inference:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_lora_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+    if args.adapter is not None:
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_adapter_{args.adapter}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     else:
         save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     

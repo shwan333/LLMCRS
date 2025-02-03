@@ -45,7 +45,6 @@ if __name__ == '__main__':
     parser.add_argument('--temperature', type=float, default=1.5)
     parser.add_argument('--beam_num', type=int, default=8)
     parser.add_argument('--split', type=str, default='train')
-    parser.add_argument('--use_lora_at_inference', action='store_true')
     parser.add_argument('--topK', type=int, default=10)
     parser.add_argument('--reward_func_topK', type=int, default=10, choices =[-1, 1, 5, 10, 20, 30, 50, 100])
     parser.add_argument('--history', type=str, default='full')
@@ -60,6 +59,7 @@ if __name__ == '__main__':
     else: args.use_unsloth = False
     if 'unsloth' in args.user_model: args.user_use_unsloth = True
     else: args.user_use_unsloth = False
+    args.cache_dir = "/data1/shchoi/LLM_ckp/hub"
 
     if check_proprietary_model(args.user_model):
         pass
@@ -151,12 +151,12 @@ if __name__ == '__main__':
     print(args.gpu_id)
     model = AutoModelForCausalLM.from_pretrained(
         model_id, 
-        cache_dir="/home/work/shchoi/.cache/huggingface/hub",
+        cache_dir=args.cache_dir,
         torch_dtype=torch.bfloat16,
         ).to(f'cuda:{args.gpu_id}')
     # import time
     # time.sleep(10)
-    tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir="/home/work/shchoi/.cache/huggingface/hub")
+    tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=args.cache_dir)
     if "Llama" in args.rec_model:
         tokenizer.pad_token = tokenizer.eos_token
 

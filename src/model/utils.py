@@ -8,7 +8,6 @@ from rapidfuzz import fuzz, process
 from torch import nn
 from torch.nn import functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from optimum.bettertransformer import BetterTransformer
 
 special_tokens_dict = {
     'pad_token': '<|pad|>'
@@ -29,6 +28,13 @@ def get_model_path(args):
     LM_model_path = model_path["LM"]    
     return LM_model_path
 
+def get_adapter_path(args):
+    model_path = os.path.join(args.root_dir, 'model_path.json')
+    with open(model_path, 'r') as f:
+        model_path = json.load(f)
+    adapter_path = model_path["adapter_path"]    
+    return adapter_path
+
 def get_model_list(args):
     model_path = get_model_path(args)
     model_list = []
@@ -41,35 +47,49 @@ def get_model_list(args):
 def LLM_model_load(args, load_model, gpu_id, use_unsloth):
     device = f"cuda:{gpu_id}"
     model_path = get_model_path(args)
+    adapter_path = get_adapter_path(args)
     
     # LLM load 
     generation_model_id = model_path[load_model]
-    print(f'generation_model_id: {load_model}')
-    if generation_model_id != None:
-        if use_unsloth and gpu_id == args.gpu_id:
+    if args.adapter is not None:
+        adapter_id = adapter_path[args.adapter]
+    if gpu_id == args.gpu_id:
+        print(f'Rec_model: {load_model}')
+        if args.adapter is not None:
+            print(f'Adapter_id: {adapter_id}')
+        else:
+            print(f'pre-trained model, no adapter')
+    else:
+        print(f'User_model: {load_model}')
+    
+    if generation_model_id != None: # whether proprietary model or open model
+        if use_unsloth:
             print(f'use unsloth')
             from unsloth import FastLanguageModel
             from peft import PeftModel
-            if args.use_lora_at_inference:
-                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map=device)
-                generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{load_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
+            if args.adapter is not None and gpu_id == args.gpu_id: # If adapter is used for Rec model and the generation_model is Rec model
+                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = args.cache_dir, device_map=device)
+                generation_model = PeftModel.from_pretrained(generation_model, adapter_id)
                 FastLanguageModel.for_inference(generation_model)
             else:
-                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = "/home/work/shchoi/.cache/huggingface/hub", device_map=device)
+                generation_model, generation_model_tokenizer = FastLanguageModel.from_pretrained(generation_model_id, load_in_4bit = False, cache_dir = args.cache_dir, device_map=device)
                 FastLanguageModel.for_inference(generation_model)
         else:
             print(f'use huggingface')
-            generation_model_tokenizer = AutoTokenizer.from_pretrained(generation_model_id, padding_side='left', device_map = device,)
+            generation_model_tokenizer = AutoTokenizer.from_pretrained(generation_model_id, padding_side='left', device_map = device, cache_dir = args.cache_dir)
             generation_model = AutoModelForCausalLM.from_pretrained(
                 generation_model_id,
                 torch_dtype=torch.bfloat16,
                 device_map=device,
             )
-            if args.use_lora_at_inference:
+            if args.adapter is not None and gpu_id == args.gpu_id: # If adapter is used for Rec model and the generation_model is Rec model
                 print(f'use lora')
                 from peft import PeftModel
-                generation_model = PeftModel.from_pretrained(generation_model, f"/home/work/shchoi/iEvaLM-CRS/full_{load_model}_rank_8_grad_acc_32_lr_5e-05_epochs_3/checkpoint-1344")
-                generation_model = generation_model.model.merge_and_unload()
+                generation_model.load_adapter(adapter_id)
+                generation_model = PeftModel.from_pretrained(generation_model, adapter_id)
+                generation_model = generation_model.merge_and_unload()
+                has_lora = any("lora" in name for name, _ in generation_model.named_modules())
+                print(f"Model has LoRA modules: {has_lora}")
         if "Llama" in load_model:
             generation_model_tokenizer.pad_token = generation_model_tokenizer.eos_token # 아마 이거 때문에 qwen이나 Falcon에서 학습이 안 되었던 듯
         generation_model.generation_config.pad_token_id = generation_model_tokenizer.pad_token_id
@@ -82,6 +102,8 @@ def LLM_model_load(args, load_model, gpu_id, use_unsloth):
             'tokenizer': generation_model_tokenizer,
             'terminators': generation_model_terminators,
         }
+    else:
+        pass
     
     return base_generation_LLM
 
