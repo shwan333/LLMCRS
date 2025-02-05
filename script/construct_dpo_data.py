@@ -26,8 +26,8 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str)
-    parser.add_argument('--kg_dataset', type=str, choices=['redial', 'opendialkg'])
+    parser.add_argument('--dataset', type=str, default = "opendialkg_eval")
+    parser.add_argument('--kg_dataset', type=str, choices=['redial', 'opendialkg'], default="opendialkg")
     parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
     parser.add_argument('--turn_num', type=int, default=5)
@@ -49,6 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--reward_func_topK', type=int, default=10, choices =[-1, 1, 5, 10, 20, 30, 50, 100])
     parser.add_argument('--history', type=str, default='full')
     parser.add_argument('--rank', type=int, default=32)
+    parser.add_argument('--adapter', type=str, default=None)
     
     # remove argument for conventional CRS (refer to iEVALM official repository)
     torch.multiprocessing.set_start_method('spawn')
@@ -72,7 +73,7 @@ if __name__ == '__main__':
         secret_data = json.load(f)
     openai.api_key = secret_data['openai']
     # save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
-    save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_{args.split}_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_{args.split}_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
     
     os.makedirs(save_dir, exist_ok=True)
     set_seed(args.seed)
@@ -124,7 +125,6 @@ if __name__ == '__main__':
     gradient_accumulation_steps = 32
     epochs = 3
     lr = 5e-5
-    output_dir = f"pref_tuned/{args.rec_model}_{args.embedding_model}_{args.dataset}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}"
 
     if 'unsloth' in args.rec_model: args.use_unsloth = True
     else: args.use_unsloth = False
@@ -135,7 +135,8 @@ if __name__ == '__main__':
     while args.root_dir.split('/')[-1] != 'iEvaLM-CRS':
         args.root_dir = os.path.dirname(args.root_dir)
     print(f'root_dir: {args.root_dir}')
-    save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    output_dir = f"{args.root_dir}/pref_tuned/{args.rec_model}_{args.embedding_model}_{args.dataset}_reward_func_topK{args.reward_func_topK}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}"
+    # save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
     print(f'save_dir: {save_dir}')
 
     dialog_data_list = []

@@ -85,7 +85,7 @@ def LLM_model_load(args, load_model, gpu_id, use_unsloth):
             if args.adapter is not None and gpu_id == args.gpu_id: # If adapter is used for Rec model and the generation_model is Rec model
                 print(f'use lora')
                 from peft import PeftModel
-                generation_model.load_adapter(adapter_id)
+                # generation_model.load_adapter(adapter_id)
                 generation_model = PeftModel.from_pretrained(generation_model, adapter_id)
                 generation_model = generation_model.merge_and_unload()
                 has_lora = any("lora" in name for name, _ in generation_model.named_modules())

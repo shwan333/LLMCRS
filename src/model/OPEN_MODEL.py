@@ -52,7 +52,7 @@ class OPEN_MODEL():
             embedding_model_path = get_embedding_model_path(self.args)
             embedding_model_id = embedding_model_path[args.embedding_model]
             print(f'embedding_model_id: {embedding_model_id}')
-            self.embedding_model = SentenceTransformer(embedding_model_id, cache_folder = args.cache_dir, trust_remote_code=True)
+            self.embedding_model = SentenceTransformer(embedding_model_id, cache_folder=args.cache_dir, trust_remote_code=True, device=args.device)
             
         self.kg_dataset_path = f"../data/{self.kg_dataset}"
         with open(f"{self.kg_dataset_path}/entity2id.json", 'r', encoding="utf-8") as f:
