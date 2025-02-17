@@ -7,7 +7,7 @@ import random
 import time
 import typing
 import warnings
-
+import yaml
 import openai
 import nltk
 from loguru import logger
@@ -24,7 +24,8 @@ sys.path.append("..")
 from src.model.utils import get_entity, LLM_model_load
 from src.model.recommender import RECOMMENDER
 from utils import annotate_completion, get_instruction, get_entity_data, process_for_baselines, get_exist_dialog_set, get_dialog_data, check_proprietary_model
-from simulate import simulate_iEvaLM, batch_simulate_iEvaLM, batch_simulate_iEvaLM_rewriting
+from simulate import simulate_iEvaLM, batch_simulate_iEvaLM
+from Rec_eval import rec_eval
 
 warnings.filterwarnings('ignore')
 
@@ -55,9 +56,12 @@ if __name__ == '__main__':
     parser.add_argument('--history', type=str, default='full')
     parser.add_argument('--adapter', type=str, default=None)
     parser.add_argument('--rewrite', action='store_true')
+    parser.add_argument('--prompt_file', type=str, default='prompt.yaml')
+    parser.add_argument('--prompt_ver', type=str, default='v0')
     # remove argument for conventional CRS (refer to iEVALM official repository)
     
     args = parser.parse_args()
+    print(args)
     args.root_dir = os.path.dirname(os.getcwd())
     args.device = f'cuda:{args.gpu_id}'
     args.cache_dir = "/data1/shchoi/LLM_ckp/hub"
@@ -68,9 +72,9 @@ if __name__ == '__main__':
     args.openai_client = openai.OpenAI(api_key=secret_data['openai'])
     args.openai_async_client = openai.AsyncOpenAI(api_key=secret_data['openai'])
     if args.adapter is not None:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_adapter_{args.adapter}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_adapter_{args.adapter}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     else:
-        save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        save_dir = f'{args.root_dir}/save_{args.turn_num}/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
     
     if args.rewrite:
         save_dir = f'{save_dir}_rewrite'
@@ -86,14 +90,21 @@ if __name__ == '__main__':
         user_LLM = LLM_model_load(args, args.user_model, args.user_gpu_id, args.user_use_unsloth)
         args.user_LLM = user_LLM['model']
         args.user_tokenizer = user_LLM['tokenizer']
-        
+    
+    prompt_path = os.path.join(args.root_dir, args.prompt_file)
+    with open(prompt_path, 'r', encoding='utf-8') as file:
+    # safe_load를 사용하면 YAML 형식의 데이터를 안전하게 읽어올 수 있습니다
+        prompts = yaml.safe_load(file)
+    seeker_instruction_template = prompts[args.prompt_ver]['seeker_instruction_template']
+    args.chat_recommender_instruction = prompts[args.prompt_ver]['chat_recommender_instruction']
+    args.seeker_prompt = prompts[args.prompt_ver]['seeker_prompt']
+    
     os.makedirs(save_dir, exist_ok=True)
     random.seed(args.seed)
     
     # recommender
     recommender = RECOMMENDER(args)
 
-    recommender_instruction, seeker_instruction_template = get_instruction(args.dataset) # TODO: instruction 받는 형태를 하나로 통일
     id2entity, entity_list = get_entity_data(args)
     dialog_id2data = get_dialog_data(args)
     dialog_id_set = set(dialog_id2data.keys()) - get_exist_dialog_set(save_dir)
@@ -146,3 +157,6 @@ if __name__ == '__main__':
                 
                 # Update progress bar
                 pbar.update(1)
+                
+    rec_eval(args.turn_num, args.mode)
+    

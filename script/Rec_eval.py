@@ -22,11 +22,11 @@ def rec_eval(turn_num, mode):
     metric = RecMetric([1, 5, 10, 25, 50])
     
     if args.adapter is not None:
-        save_path = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_adapter_{args.adapter}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
-        result_path = f"../save_{args.turn_num}/result/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_adapter_{args.adapter}/{args.split}"
+        save_path = f'{args.root_dir}/save_{args.turn_num}/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_adapter_{args.adapter}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        result_path = f"../save_{args.turn_num}/{args.prompt_ver}/result/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_adapter_{args.adapter}/{args.split}"
     else:
-        save_path = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
-        result_path = f"../save_{args.turn_num}/result/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}/{args.split}"
+        save_path = f'{args.root_dir}/save_{args.turn_num}/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/{args.split}' 
+        result_path = f"../save_{args.turn_num}/{args.prompt_ver}/result/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}/{args.split}"
     
     if args.rewrite:
         save_path = f'{save_path}_rewrite'
@@ -78,6 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('--adapter', type=str, default=None)
     parser.add_argument('--rewrite', action='store_true')
     parser.add_argument('--split', type=str)
+    parser.add_argument('--prompt_ver', type=str)
     
     args = parser.parse_args()
     args.root_dir = os.path.dirname(os.getcwd())

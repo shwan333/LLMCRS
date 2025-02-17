@@ -1,7 +1,7 @@
 # train_dpo.py
 from datasets import load_dataset, Dataset
 from trl import DPOConfig, DPOTrainer
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, EarlyStoppingCallback
 from peft import LoraConfig
 import torch, json, os, argparse
 from src.model.utils import get_model_path
@@ -10,6 +10,22 @@ import torch
 from transformers import TrainingArguments
 from trl import DPOTrainer
 
+def load_dialog_data_list(dir: str) -> list:
+    
+    dialog_data_list = []
+    for file in os.listdir(dir):
+        try:
+            file_path = os.path.join(dir, file)
+            if os.path.isdir(file_path):
+                continue
+            dialog_data = json.load(open(file_path, 'r'))
+            dialog_data_list.append(dialog_data)
+        except json.decoder.JSONDecodeError as e:
+            print(e)
+            print(file)
+        
+    return dialog_data_list
+
 def rec_extract_assistant_messages(messages, index=-1):
     """Recursively extract the last assistant messages from the end of the conversation."""
     if messages[index]["role"] == "assistant":
@@ -17,7 +33,7 @@ def rec_extract_assistant_messages(messages, index=-1):
     else:
         return rec_extract_assistant_messages(messages, index-1)
 
-def create_triplets(example, tokenizer):
+def create_triplets_v0(example, tokenizer):
     """Create the triplets (prompt, chosen, rejected)"""
     # Extract the N-1 turns to form the prompt
     # Prepend a system message if the first message is not a system message
@@ -35,6 +51,42 @@ def create_triplets(example, tokenizer):
         'content': example['recommender_prompt'],
     }
     prompt_messages.insert(0, sys_instrunction)
+    
+    # Now we extract the final assistant turn to define chosen/rejected responses
+    chosen_messages = rec_extract_assistant_messages(example["chosen"])
+    rejected_messages = rec_extract_assistant_messages(example["rejected"])
+    
+    # apply template to the messages and return the triplets
+    # return {
+    #     "prompt": tokenizer.apply_chat_template(prompt_messages, tokenize=False, add_generation_prompt=True,),
+    #     "chosen": tokenizer.apply_chat_template(chosen_messages, tokenize=False, add_generation_prompt=True,),
+    #     "rejected": tokenizer.apply_chat_template(rejected_messages, tokenize=False, add_generation_prompt=True,)
+    # }
+    return {
+        "prompt": prompt_messages,
+        "chosen": chosen_messages,
+        "rejected": rejected_messages,
+    }
+    
+def create_triplets_v1(example, tokenizer):
+    """Create the triplets (prompt, chosen, rejected)"""
+    # Extract the N-1 turns to form the prompt
+    # Prepend a system message if the first message is not a system message
+    
+    chosen_prompt_messages = example["chosen"][:-2]
+    rejected_prompt_messages = example["rejected"][:-2]
+    
+    assert chosen_prompt_messages == rejected_prompt_messages, "Prompt messages are different for chosen and rejected responses"
+    
+    # prompt_messages = chosen_prompt_messages
+    # if prompt_messages[-1]['role'] == 'assistant':
+    #     print(f'Prompt messages: {prompt_messages}')
+    prompt_messages = []
+    sys_instrunction = {
+        'role': 'system',
+        'content': example['recommender_prompt'],
+    }
+    prompt_messages.append(sys_instrunction)
     
     # Now we extract the final assistant turn to define chosen/rejected responses
     chosen_messages = rec_extract_assistant_messages(example["chosen"])
@@ -70,13 +122,16 @@ if __name__ == '__main__':
     parser.add_argument('--history', type=str, default='full')
     parser.add_argument('--eval_strategy', type=str, default='non_repeated', choices=['repeated', 'non_repeated'])
     parser.add_argument('--eval_data_size', type=str, default='full', choices=['sample', 'full']) # "sample" means "sampling 100 dialogues"
+    parser.add_argument('--reward_func_topK', type=int, default=10, choices =[-1, 1, 5, 10, 20, 30, 50, 100])
+    parser.add_argument('--prompt_ver', type=str, default = "v0")
+    parser.add_argument('--max_grad_norm', type=int, default = 1)
     
     args = parser.parse_args()
 
-    gradient_accumulation_steps = 32
+    gradient_accumulation_steps = 64
     epochs = 3
     lr = 5e-5
-    output_dir = f"pref_tuned/{args.rec_model}_{args.embedding_model}_{args.dataset}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}"
+    output_dir = f"/data1/shchoi/pref_tuned/{args.prompt_ver}/{args.rec_model}_{args.embedding_model}_{args.dataset}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}_max_grad_norm_{args.max_grad_norm}"
 
     if 'unsloth' in args.rec_model: args.use_unsloth = True
     else: args.use_unsloth = False
@@ -85,16 +140,17 @@ if __name__ == '__main__':
     args.root_dir = os.getcwd()
     args.cache_dir = "/data1/shchoi/LLM_ckp/hub"
     print(f'root_dir: {args.root_dir}')
-    save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
-    print(f'save_dir: {save_dir}')
-
-    dialog_data_list = []
-    for file in os.listdir(save_dir):
-        file_path = os.path.join(save_dir, file)
-        if os.path.isdir(file_path):
-            continue
-        dialog_data = json.load(open(file_path, 'r'))
-        dialog_data_list.append(dialog_data)
+    # save_dir = f'/home/work/shchoi/iEvaLM-CRS/save_5/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
+    # print(f'save_dir: {save_dir}')
+    # dialog_data_list = load_dialog_data_list(save_dir)
+        
+    train_data_dir = f'/home/shchoi/iEvaLM-CRS/save_5/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
+    valid_data_dir = f'/home/shchoi/iEvaLM-CRS/save_5/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_valid_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
+    
+    print(f'train_data_dir: {train_data_dir}')
+    print(f'valid_data_dir: {valid_data_dir}')
+    train_dialog_data_list = load_dialog_data_list(train_data_dir)
+    valid_dialog_data_list = load_dialog_data_list(valid_data_dir)
     
     if args.use_unsloth:
         from unsloth import FastLanguageModel, PatchDPOTrainer
@@ -171,15 +227,27 @@ if __name__ == '__main__':
         if "Llama" in args.rec_model:
             tokenizer.pad_token = tokenizer.eos_token
 
-        train_dataset = Dataset.from_list(dialog_data_list)
-        train_dataset = train_dataset.map(create_triplets, remove_columns=train_dataset.features, fn_kwargs={"tokenizer": tokenizer})
-
+        if args.prompt_ver == 'v0':
+            train_dataset = Dataset.from_list(train_dialog_data_list)
+            train_dataset = train_dataset.map(create_triplets_v0, remove_columns=train_dataset.features, fn_kwargs={"tokenizer": tokenizer})
+            
+            valid_dataset = Dataset.from_list(valid_dialog_data_list)
+            valid_dataset = valid_dataset.map(create_triplets_v0, remove_columns=valid_dataset.features, fn_kwargs={"tokenizer": tokenizer})
+        elif args.prompt_ver == 'v1':
+            train_dataset = Dataset.from_list(train_dialog_data_list)
+            train_dataset = train_dataset.map(create_triplets_v1, remove_columns=train_dataset.features, fn_kwargs={"tokenizer": tokenizer})
+            
+            valid_dataset = Dataset.from_list(valid_dialog_data_list)
+            valid_dataset = valid_dataset.map(create_triplets_v1, remove_columns=valid_dataset.features, fn_kwargs={"tokenizer": tokenizer})
+            
         # print size of train_dataset
-        print(f"Number of dialogues: {len(train_dataset)}")
+        print(f"Number of train dialogues: {len(train_dataset)}")
+        print(f"Number of valid dialogues: {len(valid_dataset)}")
 
         # print size of train_dataset
         peft_config = LoraConfig(
             r=args.rank,
+            use_rslora= True,
             lora_alpha=args.rank*4,
             lora_dropout=0.05,
             target_modules=[
@@ -210,7 +278,18 @@ if __name__ == '__main__':
             warmup_ratio = 0.1,
             # remove_unused_columns=False,
             # run_name="dpo_llama2",
+            eval_strategy="steps",
+            eval_steps=30,
+            save_strategy="steps",
             seed=42,
+            load_best_model_at_end=True,
+            save_steps=30,
+            save_total_limit=5,
+            eval_on_start=True,
+            greater_is_better= True,
+            metric_for_best_model="eval_rewards/accuracies"
         )
-        trainer = DPOTrainer(model=model, args=training_args, processing_class=tokenizer, train_dataset=train_dataset, peft_config=peft_config)
+        trainer = DPOTrainer(model=model, args=training_args, processing_class=tokenizer, train_dataset=train_dataset, eval_dataset=valid_dataset, peft_config=peft_config, callbacks=[EarlyStoppingCallback(early_stopping_patience=360)])
         trainer.train()
+        trainer.save_model(f'{output_dir}/best_model')
+        

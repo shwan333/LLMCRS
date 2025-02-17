@@ -139,9 +139,7 @@ class OPEN_MODEL():
         self.id2item_id_arr = np.asarray(self.id2item_id)
         self.item_emb_arr = np.asarray(self.item_emb_list)
             
-        self.chat_recommender_instruction = '''You are a recommender chatting with the user to provide recommendation. You must follow the instructions below during chat.
-If you do not have enough information about user preference, you should ask the user for his preference.
-If you have enough information about user preference, you can give recommendation. The recommendation list must contain 10 items that are consistent with user preference. The recommendation list can contain items that the dialog mentioned before. The format of the recommendation list is: no. title. Don't mention anything other than the title of items in your recommendation list.'''
+        self.chat_recommender_instruction = args.chat_recommender_instruction
 
     def annotate(self, args: argparse.Namespace, conv_str: str | list[str]):
         if hasattr(self, 'embedding_model'):
@@ -329,6 +327,7 @@ If you have enough information about user preference, you can give recommendatio
     def get_batch_rec(self, conv_dict_list: list[dict]):
         
         item_rank_arr_list = []
+        item_names_list = []
         rec_labels_list = []
         conv_str_list = []
         
@@ -365,6 +364,7 @@ If you have enough information about user preference, you can give recommendatio
         conv_embed_list = self.annotate(self.args, conv_str_list)
 
         for conv_embed in conv_embed_list:
+            item_names = []
             conv_embed = conv_embed
             conv_embed = np.asarray(conv_embed).reshape(1, -1)
             
@@ -372,11 +372,15 @@ If you have enough information about user preference, you can give recommendatio
             rank_arr = np.argsort(sim_mat, axis=-1).tolist()
             rank_arr = np.flip(rank_arr, axis=-1)[:, :self.args.topK]
             item_rank_arr = self.id2item_id_arr[rank_arr].tolist()
+            for item_id in item_rank_arr[0]:
+                item_names.append(self.id2info[item_id]['name'])
+            
             item_rank_arr = [[self.id2entityid[item_id] for item_id in item_rank_arr[0]]]
             
             item_rank_arr_list.append(item_rank_arr)
+            item_names_list.append(item_names)
         
-        return item_rank_arr_list, rec_labels_list
+        return item_rank_arr_list, rec_labels_list, item_names_list
     
     def get_sample_conv(self, conv_dict) -> list[str]:
         context = conv_dict['context']
@@ -403,63 +407,116 @@ If you have enough information about user preference, you can give recommendatio
     
         return gen_str_list
 
-    def get_batch_conv(self, conv_dict_list) -> list[str]:
+    def get_batch_conv(self, conv_dict_list, rec_items_list) -> list[str]:
         
-        context_list_list = []
-        for conv_dict in conv_dict_list:
-            context = conv_dict['context']
-            context_list = [] # for model
-            context_list.append({
-                'role': 'system',
-                'content': self.chat_recommender_instruction
-            })
-            
-            for i, text in enumerate(context):
-                if len(text) == 0:
-                    continue
-                if i % 2 == 0:
-                    role_str = 'user'
-                else:
-                    role_str = 'assistant'
+        if self.args.prompt_ver == 'v0':
+            context_list_list = []
+            for conv_dict in conv_dict_list:
+                context = conv_dict['context']
+                context_list = [] # for model
                 context_list.append({
-                    'role': role_str,
-                    'content': text
+                    'role': 'system',
+                    'content': self.chat_recommender_instruction
                 })
-            
-            gen_inputs = None
-            context_list_list.append(context_list)
-        gen_str_list = self.annotate_batch_chat(self.args, context_list_list)
+                
+                for i, text in enumerate(context):
+                    if len(text) == 0:
+                        continue
+                    if i % 2 == 0:
+                        role_str = 'user'
+                    else:
+                        role_str = 'assistant'
+                    context_list.append({
+                        'role': role_str,
+                        'content': text
+                    })
+                
+                gen_inputs = None
+                context_list_list.append(context_list)
+            gen_str_list = self.annotate_batch_chat(self.args, context_list_list)
+        
+        else:
+            context_list_list = []
+            for idx, conv_dict in enumerate(conv_dict_list):
+                context = conv_dict['context']
+                context_list = [] # for model
+                conversation_history = ""
+                
+                for i, text in enumerate(context):
+                    if len(text) == 0:
+                        continue
+                    if i % 2 == 0:
+                        role_str = 'user'
+                    else:
+                        role_str = 'assistant'
+                    conversation_history += f'{role_str}: {text}\n'
+                
+                gen_inputs = None
+                recommender_prompt = self.chat_recommender_instruction.format(rec_items_list[idx], conversation_history)
+                context_list.append({
+                    'role': 'user',
+                    'content': recommender_prompt
+                })
+                context_list_list.append(context_list)
+            gen_str_list = self.annotate_batch_chat(self.args, context_list_list)
         
         return gen_inputs, gen_str_list
     
-    def get_sample_batch_conv(self, conv_dict_list) -> list[str]:
-        
+    def get_sample_batch_conv(self, conv_dict_list, rec_items_list) -> list[str]:
         context_list_list = []
-        for conv_dict in conv_dict_list:
-            context = conv_dict['context']
-            context_list = [] # for model
-            context_list.append({
-                'role': 'system',
-                'content': self.chat_recommender_instruction
-            })
-            
-            for i, text in enumerate(context):
-                if len(text) == 0:
-                    continue
-                if i % 2 == 0:
-                    role_str = 'user'
-                else:
-                    role_str = 'assistant'
-                context_list.append({
-                    'role': role_str,
-                    'content': text
-                })
-            
-            gen_inputs = None
-            context_list_list.append(context_list)
-        gen_str_list = self.annotate_sample_batch_chat(self.args, context_list_list)
+        recommender_prompt_list = []
         
-        return gen_inputs, gen_str_list
+        if self.args.prompt_ver == 'v0':
+            for conv_dict in conv_dict_list:
+                context = conv_dict['context']
+                context_list = [] # for model
+                context_list.append({
+                    'role': 'system',
+                    'content': self.chat_recommender_instruction
+                })
+                
+                for i, text in enumerate(context):
+                    if len(text) == 0:
+                        continue
+                    if i % 2 == 0:
+                        role_str = 'user'
+                    else:
+                        role_str = 'assistant'
+                    context_list.append({
+                        'role': role_str,
+                        'content': text
+                    })
+                
+                gen_inputs = None
+                context_list_list.append(context_list)
+                recommender_prompt_list.append(self.chat_recommender_instruction)
+            gen_str_list = self.annotate_sample_batch_chat(self.args, context_list_list)
+        else:
+            for idx, conv_dict in enumerate(conv_dict_list):
+                context = conv_dict['context']
+                context_list = [] # for model
+                conversation_history = ""
+                
+                for i, text in enumerate(context):
+                    if len(text) == 0:
+                        continue
+                    if i % 2 == 0:
+                        role_str = 'user'
+                    else:
+                        role_str = 'assistant'
+                    conversation_history += f'{role_str}: {text}\n'
+                
+                gen_inputs = None
+                recommender_prompt = self.chat_recommender_instruction.format(rec_items_list[idx], conversation_history)
+                context_list.append({
+                    'role': 'user',
+                    'content': recommender_prompt
+                })
+                context_list_list.append(context_list)
+                recommender_prompt_list.append(recommender_prompt)
+            gen_str_list = self.annotate_sample_batch_chat(self.args, context_list_list)
+        
+        return gen_inputs, gen_str_list, recommender_prompt_list
     
     def get_batch_rewriting_rec(self, conv_dict_list):
         context_list_list = []

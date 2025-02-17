@@ -8,6 +8,7 @@ import warnings
 import torch
 import openai
 from tqdm import tqdm
+import yaml
 
 import sys
 sys.path.append("..")
@@ -44,16 +45,19 @@ if __name__ == '__main__':
     parser.add_argument('--user_gpu_id', type=int, default=0)
     parser.add_argument('--temperature', type=float, default=1.5)
     parser.add_argument('--beam_num', type=int, default=8)
-    parser.add_argument('--split', type=str, default='train')
+    parser.add_argument('--split', type=str, required=True)
     parser.add_argument('--topK', type=int, default=10)
     parser.add_argument('--reward_func_topK', type=int, default=10, choices =[-1, 1, 5, 10, 20, 30, 50, 100])
     parser.add_argument('--history', type=str, default='full')
     parser.add_argument('--rank', type=int, default=32)
     parser.add_argument('--adapter', type=str, default=None)
+    parser.add_argument('--prompt_file', type=str, default='prompt.yaml')
+    parser.add_argument('--prompt_ver', type=str, required=True)
     
     # remove argument for conventional CRS (refer to iEVALM official repository)
     torch.multiprocessing.set_start_method('spawn')
     args = parser.parse_args()
+    print(args)
     args.root_dir = os.path.dirname(os.getcwd())
     args.device = f'cuda:{args.gpu_id}'
     if 'unsloth' in args.rec_model: args.use_unsloth = True
@@ -61,6 +65,8 @@ if __name__ == '__main__':
     if 'unsloth' in args.user_model: args.user_use_unsloth = True
     else: args.user_use_unsloth = False
     args.cache_dir = "/data1/shchoi/LLM_ckp/hub"
+    
+    splits = ['train', 'vaild']
 
     if check_proprietary_model(args.user_model):
         pass
@@ -68,12 +74,25 @@ if __name__ == '__main__':
         user_LLM = LLM_model_load(args, args.user_model, args.user_gpu_id, args.user_use_unsloth)
         args.user_LLM = user_LLM['model']
         args.user_tokenizer = user_LLM['tokenizer']
+        
+    prompt_path = os.path.join(args.root_dir, args.prompt_file)
+    with open(prompt_path, 'r', encoding='utf-8') as file:
+    # safe_load를 사용하면 YAML 형식의 데이터를 안전하게 읽어올 수 있습니다
+        prompts = yaml.safe_load(file)
+    seeker_instruction_template = prompts[args.prompt_ver]['seeker_instruction_template']
+    args.chat_recommender_instruction = prompts[args.prompt_ver]['chat_recommender_instruction']
+    args.seeker_prompt = prompts[args.prompt_ver]['seeker_prompt']
+    
+    print("================")
+    print(f'recommender_instruction: {args.chat_recommender_instruction}')
+    print(f'seeker_instruction_template: {seeker_instruction_template}')
+    print(f'seeker_prompt: {args.seeker_prompt}')
 
     with open (f"{args.root_dir}/secret/api.json", "r") as f:
         secret_data = json.load(f)
     openai.api_key = secret_data['openai']
     # save_dir = f'{args.root_dir}/save_{args.turn_num}/chat/{args.crs_model}_{args.rec_model}/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}' 
-    save_dir = f'{args.root_dir}/save_{args.turn_num}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_{args.split}_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
+    save_dir = f'{args.root_dir}/save_{args.turn_num}/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_{args.split}_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
     
     os.makedirs(save_dir, exist_ok=True)
     set_seed(args.seed)
@@ -81,7 +100,6 @@ if __name__ == '__main__':
     # recommender
     recommender = RECOMMENDER(args)
 
-    recommender_instruction, seeker_instruction_template = get_instruction(args.dataset) # TODO: instruction 받는 형태를 하나로 통일
     dialog_id2data = get_dialog_data(args)
     dialog_id_set = set(dialog_id2data.keys()) - get_exist_dpo_data(save_dir)
     dialog_id_list = list(dialog_id_set)
@@ -170,6 +188,7 @@ if __name__ == '__main__':
     # print size of train_dataset
     peft_config = LoraConfig(
         r=args.rank,
+        use_rslora= True,
         lora_alpha=args.rank*4,
         lora_dropout=0.05,
         target_modules=[

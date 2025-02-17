@@ -89,9 +89,7 @@ class CHATGPT():
         self.id2item_id_arr = np.asarray(id2item_id)
         self.item_emb_arr = np.asarray(item_emb_list)
             
-        self.chat_recommender_instruction = '''You are a recommender chatting with the user to provide recommendation. You must follow the instructions below during chat.
-If you do not have enough information about user preference, you should ask the user for his preference.
-If you have enough information about user preference, you can give recommendation. The recommendation list must contain 10 items that are consistent with user preference. The recommendation list can contain items that the dialog mentioned before. The format of the recommendation list is: no. title. Don't mention anything other than the title of items in your recommendation list.'''
+        self.chat_recommender_instruction = args.chat_recommender_instruction
     
     def get_rec(self, conv_dict):
         

@@ -34,14 +34,14 @@ class RECOMMENDER():
     def get_batch_rec(self, conv_dict_list):
         return self.crs_model.get_batch_rec(conv_dict_list)
 
-    def get_batch_conv(self, conv_dict):
-        return self.crs_model.get_batch_conv(conv_dict)
+    def get_batch_conv(self, conv_dict, rec_items_list):
+        return self.crs_model.get_batch_conv(conv_dict, rec_items_list)
     
     def get_sample_conv(self, conv_dict):
         return self.crs_model.get_sample_conv(conv_dict)
     
-    def get_sample_batch_conv(self, conv_dict):
-        return self.crs_model.get_sample_batch_conv(conv_dict)
+    def get_sample_batch_conv(self, conv_dict_list, item_names_list):
+        return self.crs_model.get_sample_batch_conv(conv_dict_list, item_names_list)
     
     def get_batch_rewriting_rec(self, conv_dict):
         return self.crs_model.get_batch_rewriting_rec(conv_dict)
