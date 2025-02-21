@@ -106,15 +106,15 @@ def create_triplets_v1(example, tokenizer):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, choices=['redial_eval', 'opendialkg_eval'])
+    parser.add_argument('--dataset', type=str, choices=['redial_eval', 'opendialkg_eval'], default='opendialkg_eval')
     parser.add_argument('--embedding_model', type=str, default = "text-embedding-3-small")
     parser.add_argument('--rec_model', type=str, default = "gpt-4o-mini")
     parser.add_argument('--user_model', type=str, default = "gpt-4o-mini")
     parser.add_argument('--crs_model', type=str, choices=['kbrd', 'barcor', 'unicrs', 'chatgpt', 'openmodel'])
     parser.add_argument('--use_unsloth', action='store_true')
-    parser.add_argument('--temperature', type=float)
-    parser.add_argument('--beam_num', type=int)
-    parser.add_argument('--topK', type=int)
+    parser.add_argument('--temperature', type=float, default=1.0)
+    parser.add_argument('--beam_num', type=int, default=8)
+    parser.add_argument('--topK', type=int, default=10)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--max_seq_length', type=int, default=512)
     parser.add_argument('--rank', type=int, default=4)
@@ -125,13 +125,14 @@ if __name__ == '__main__':
     parser.add_argument('--reward_func_topK', type=int, default=10, choices =[-1, 1, 5, 10, 20, 30, 50, 100])
     parser.add_argument('--prompt_ver', type=str, default = "v0")
     parser.add_argument('--max_grad_norm', type=int, default = 1)
+    parser.add_argument('--turn_num', type=int, default = 5)
     
     args = parser.parse_args()
 
     gradient_accumulation_steps = 64
     epochs = 3
     lr = 5e-5
-    output_dir = f"/data1/shchoi/pref_tuned/{args.prompt_ver}/{args.rec_model}_{args.embedding_model}_{args.dataset}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}_max_grad_norm_{args.max_grad_norm}"
+    output_dir = f"/data1/shchoi/pref_tuned/{args.prompt_ver}/{args.rec_model}_{args.embedding_model}_{args.dataset}_rank_{args.rank}_grad_acc_{gradient_accumulation_steps}_lr_{lr}_epochs_{epochs}"
 
     if 'unsloth' in args.rec_model: args.use_unsloth = True
     else: args.use_unsloth = False
@@ -144,8 +145,8 @@ if __name__ == '__main__':
     # print(f'save_dir: {save_dir}')
     # dialog_data_list = load_dialog_data_list(save_dir)
         
-    train_data_dir = f'/home/shchoi/iEvaLM-CRS/save_5/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
-    valid_data_dir = f'/home/shchoi/iEvaLM-CRS/save_5/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_valid_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
+    train_data_dir = f'/home/shchoi/iEvaLM-CRS/save_{args.turn_num}/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_train_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
+    valid_data_dir = f'/home/shchoi/iEvaLM-CRS/save_{args.turn_num}/{args.prompt_ver}/user_{args.user_model}/emb_{args.embedding_model}/{args.crs_model}_{args.rec_model}_top{args.topK}_{args.history}_history/{args.dataset}/{args.eval_data_size}_{args.eval_strategy}/dpo_valid_data_temp{args.temperature}_sample_num{args.beam_num}_top{args.topK}_reward_func_topK{args.reward_func_topK}' 
     
     print(f'train_data_dir: {train_data_dir}')
     print(f'valid_data_dir: {valid_data_dir}')
@@ -227,7 +228,7 @@ if __name__ == '__main__':
         if "Llama" in args.rec_model:
             tokenizer.pad_token = tokenizer.eos_token
 
-        if args.prompt_ver == 'v0':
+        if args.prompt_ver == 'v0' or args.prompt_ver == 'v2':
             train_dataset = Dataset.from_list(train_dialog_data_list)
             train_dataset = train_dataset.map(create_triplets_v0, remove_columns=train_dataset.features, fn_kwargs={"tokenizer": tokenizer})
             
