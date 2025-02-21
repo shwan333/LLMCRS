@@ -1,0 +1,101 @@
+  0%|                   Traceback (most recent call last):                                                       | 0/287 [00:40<?, ?it/s]
+  File "/home/shchoi/iEvaLM-CRS/experiment_code/train_retriever.py", line 131, in <module>                                               
+{'eval_loss': 0.06530984491109848, 'eval_runtime': 40.022, 'eval_samples_per_second': 55.295, 'eval_steps_per_second': 0.225, 'epoch': 0}
+    trainer.train()
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2171, in train
+    return inner_training_loop(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2531, in _inner_training_loop
+    tr_loss_step = self.training_step(model, inputs, num_items_in_batch)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 3675, in training_step
+    loss = self.compute_loss(model, inputs, num_items_in_batch=num_items_in_batch)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/trainer.py", line 405, in compute_loss
+    loss = loss_fn(features, labels)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/losses/MultipleNegativesRankingLoss.py", line 103, in forward
+    embeddings = [self.model(sentence_feature)["sentence_embedding"] for sentence_feature in sentence_features]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/losses/MultipleNegativesRankingLoss.py", line 103, in <listcomp>
+    embeddings = [self.model(sentence_feature)["sentence_embedding"] for sentence_feature in sentence_features]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/accelerate/utils/operations.py", line 819, in forward
+    return model_forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/accelerate/utils/operations.py", line 807, in __call__
+    return convert_to_fp32(self.model_forward(*args, **kwargs))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/SentenceTransformer.py", line 690, in forward
+    input = module(input, **module_kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/models/Transformer.py", line 442, in forward
+    output_states = self.auto_model(**trans_features, **kwargs, return_dict=False)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shchoi/.cache/huggingface/modules/transformers_modules/nomic-ai/nomic-bert-2048/40b98394640e630d5276807046089b233113aa87/modeling_hf_nomic_bert.py", line 1710, in forward
+    sequence_output = self.encoder(hidden_states, attention_mask=attention_mask, return_dict=return_dict)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shchoi/.cache/huggingface/modules/transformers_modules/nomic-ai/nomic-bert-2048/40b98394640e630d5276807046089b233113aa87/modeling_hf_nomic_bert.py", line 1589, in forward
+    hidden_states, hidden_states2, residual = layer(
+                                              ^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shchoi/.cache/huggingface/modules/transformers_modules/nomic-ai/nomic-bert-2048/40b98394640e630d5276807046089b233113aa87/modeling_hf_nomic_bert.py", line 1524, in forward
+    mlp_out = self.mlp(hidden_states)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shchoi/.cache/huggingface/modules/transformers_modules/nomic-ai/nomic-bert-2048/40b98394640e630d5276807046089b233113aa87/modeling_hf_nomic_bert.py", line 1074, in forward
+    gate = self.fc12(x)
+           ^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/linear.py", line 125, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.36 GiB. GPU 0 has a total capacity of 47.54 GiB of which 204.94 MiB is free. Including non-PyTorch memory, this process has 47.32 GiB memory in use. Of the allocated memory 44.82 GiB is allocated by PyTorch, and 2.18 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

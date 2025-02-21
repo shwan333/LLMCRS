@@ -1,0 +1,13 @@
+{"time":"2025-02-05T01:31:05.178499308+09:00","level":"INFO","msg":"stream: starting","core version":"0.19.5","symlink path":"/home/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250205_013104-mu9gyk5n/logs/debug-core.log"}
+{"time":"2025-02-05T01:31:05.304575914+09:00","level":"INFO","msg":"created new stream","id":"mu9gyk5n"}
+{"time":"2025-02-05T01:31:05.304628621+09:00","level":"INFO","msg":"stream: started","id":"mu9gyk5n"}
+{"time":"2025-02-05T01:31:05.304659201+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"mu9gyk5n"}
+{"time":"2025-02-05T01:31:05.304664441+09:00","level":"INFO","msg":"handler: started","stream_id":"mu9gyk5n"}
+{"time":"2025-02-05T01:31:05.304746087+09:00","level":"INFO","msg":"sender: started","stream_id":"mu9gyk5n"}
+{"time":"2025-02-05T01:31:05.624725826+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-05T01:33:35.780593003+09:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-02-05T01:35:10.983471351+09:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-02-05T01:36:04.84679241+09:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-02-05T01:36:05.794737786+09:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-02-05T01:37:11.120759336+09:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-02-05T01:37:12.273890241+09:00","level":"INFO","msg":"Pausing system monitor"}

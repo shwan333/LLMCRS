@@ -1,0 +1,39 @@
+  2%|██▊                                                                                                                                                          | 5/280 [01:00<37:18,  8.14s/it]Traceback (most recent call last):
+  File "/home/shchoi/iEvaLM-CRS/experiment_code/train_retriever.py", line 131, in <module>                                                                         | 8/35 [00:02<00:10,  2.50it/s]
+{'eval_loss': 0.10996488481760025, 'eval_runtime': 36.2285, 'eval_samples_per_second': 61.085, 'eval_steps_per_second': 0.966, 'epoch': 0}
+{'loss': 15.5108, 'grad_norm': 104.15270233154297, 'learning_rate': 5.357142857142857e-06, 'epoch': 0.12}
+    trainer.train()
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2171, in train
+    return inner_training_loop(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2598, in _inner_training_loop
+    self._maybe_log_save_evaluate(
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 3071, in _maybe_log_save_evaluate
+    metrics = self._evaluate(trial, ignore_keys_for_eval)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 3025, in _evaluate
+    metrics = self.evaluate(ignore_keys=ignore_keys_for_eval)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/trainer.py", line 461, in evaluate
+    return super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 4073, in evaluate
+    output = eval_loop(
+             ^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/trainer.py", line 471, in evaluation_loop
+    output = super().evaluation_loop(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 4257, in evaluation_loop
+    for step, inputs in enumerate(dataloader):
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/accelerate/data_loader.py", line 572, in __iter__
+    current_batch = send_to_device(current_batch, self.device, non_blocking=self._non_blocking)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/accelerate/utils/operations.py", line 183, in send_to_device
+    {
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/accelerate/utils/operations.py", line 184, in <dictcomp>
+    k: t if k in skip_keys else send_to_device(t, device, non_blocking=non_blocking, skip_keys=skip_keys)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/accelerate/utils/operations.py", line 155, in send_to_device
+    return tensor.to(device, non_blocking=non_blocking)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

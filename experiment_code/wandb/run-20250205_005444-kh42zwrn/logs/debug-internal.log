@@ -1,0 +1,8 @@
+{"time":"2025-02-05T00:54:44.592206537+09:00","level":"INFO","msg":"stream: starting","core version":"0.19.5","symlink path":"/home/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250205_005444-kh42zwrn/logs/debug-core.log"}
+{"time":"2025-02-05T00:54:44.704428244+09:00","level":"INFO","msg":"created new stream","id":"kh42zwrn"}
+{"time":"2025-02-05T00:54:44.704462955+09:00","level":"INFO","msg":"stream: started","id":"kh42zwrn"}
+{"time":"2025-02-05T00:54:44.704545006+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"kh42zwrn"}
+{"time":"2025-02-05T00:54:44.704605745+09:00","level":"INFO","msg":"handler: started","stream_id":"kh42zwrn"}
+{"time":"2025-02-05T00:54:44.704653437+09:00","level":"INFO","msg":"sender: started","stream_id":"kh42zwrn"}
+{"time":"2025-02-05T00:54:45.019696272+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-05T01:17:37.548755984+09:00","level":"INFO","msg":"Pausing system monitor"}

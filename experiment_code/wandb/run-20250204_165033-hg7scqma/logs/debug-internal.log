@@ -1,0 +1,8 @@
+{"time":"2025-02-04T16:50:34.146319567+09:00","level":"INFO","msg":"stream: starting","core version":"0.19.5","symlink path":"/home/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250204_165033-hg7scqma/logs/debug-core.log"}
+{"time":"2025-02-04T16:50:34.262572927+09:00","level":"INFO","msg":"created new stream","id":"hg7scqma"}
+{"time":"2025-02-04T16:50:34.262617811+09:00","level":"INFO","msg":"stream: started","id":"hg7scqma"}
+{"time":"2025-02-04T16:50:34.262744448+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"hg7scqma"}
+{"time":"2025-02-04T16:50:34.262781862+09:00","level":"INFO","msg":"sender: started","stream_id":"hg7scqma"}
+{"time":"2025-02-04T16:50:34.262841028+09:00","level":"INFO","msg":"handler: started","stream_id":"hg7scqma"}
+{"time":"2025-02-04T16:50:34.574211449+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-04T16:55:03.966380627+09:00","level":"INFO","msg":"Pausing system monitor"}

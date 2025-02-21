@@ -1,0 +1,9 @@
+{"time":"2025-01-22T13:58:20.983844018Z","level":"INFO","msg":"using version","core version":"0.18.5"}
+{"time":"2025-01-22T13:58:20.983866856Z","level":"INFO","msg":"created symlink","path":"/home/work/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250122_135820-uq5is8y3/logs/debug-core.log"}
+{"time":"2025-01-22T13:58:21.200445832Z","level":"INFO","msg":"created new stream","id":"uq5is8y3"}
+{"time":"2025-01-22T13:58:21.200481101Z","level":"INFO","msg":"stream: started","id":"uq5is8y3"}
+{"time":"2025-01-22T13:58:21.200677212Z","level":"INFO","msg":"handler: started","stream_id":{"value":"uq5is8y3"}}
+{"time":"2025-01-22T13:58:21.201145072Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"uq5is8y3"}}
+{"time":"2025-01-22T13:58:21.201153592Z","level":"INFO","msg":"sender: started","stream_id":"uq5is8y3"}
+{"time":"2025-01-22T13:58:21.595453115Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-22T13:58:26.932827508Z","level":"INFO","msg":"Pausing system monitor"}

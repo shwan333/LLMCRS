@@ -1,0 +1,105 @@
+  0%|                  Traceback (most recent call last):                                                        | 0/287 [00:00<?, ?it/s]
+  File "/home/shchoi/iEvaLM-CRS/experiment_code/train_retriever_copy.py", line 131, in <module>                                          
+    trainer.train()
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2171, in train
+    return inner_training_loop(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2440, in _inner_training_loop
+    self._evaluate(trial, ignore_keys_for_eval, skip_scheduler=True)
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 3025, in _evaluate
+    metrics = self.evaluate(ignore_keys=ignore_keys_for_eval)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/trainer.py", line 461, in evaluate
+    return super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 4073, in evaluate
+    output = eval_loop(
+             ^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/trainer.py", line 471, in evaluation_loop
+    output = super().evaluation_loop(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 4267, in evaluation_loop
+    losses, logits, labels = self.prediction_step(model, inputs, prediction_loss_only, ignore_keys=ignore_keys)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 4483, in prediction_step
+    loss, outputs = self.compute_loss(model, inputs, return_outputs=True)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/trainer.py", line 405, in compute_loss
+    loss = loss_fn(features, labels)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/losses/MultipleNegativesRankingLoss.py", line 103, in forward
+    embeddings = [self.model(sentence_feature)["sentence_embedding"] for sentence_feature in sentence_features]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/losses/MultipleNegativesRankingLoss.py", line 103, in <listcomp>
+    embeddings = [self.model(sentence_feature)["sentence_embedding"] for sentence_feature in sentence_features]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/accelerate/utils/operations.py", line 819, in forward
+    return model_forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/accelerate/utils/operations.py", line 807, in __call__
+    return convert_to_fp32(self.model_forward(*args, **kwargs))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/SentenceTransformer.py", line 690, in forward
+    input = module(input, **module_kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/models/Transformer.py", line 442, in forward
+    output_states = self.auto_model(**trans_features, **kwargs, return_dict=False)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shchoi/.cache/huggingface/modules/transformers_modules/nomic-ai/nomic-bert-2048/40b98394640e630d5276807046089b233113aa87/modeling_hf_nomic_bert.py", line 1710, in forward
+    sequence_output = self.encoder(hidden_states, attention_mask=attention_mask, return_dict=return_dict)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shchoi/.cache/huggingface/modules/transformers_modules/nomic-ai/nomic-bert-2048/40b98394640e630d5276807046089b233113aa87/modeling_hf_nomic_bert.py", line 1589, in forward
+    hidden_states, hidden_states2, residual = layer(
+                                              ^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shchoi/.cache/huggingface/modules/transformers_modules/nomic-ai/nomic-bert-2048/40b98394640e630d5276807046089b233113aa87/modeling_hf_nomic_bert.py", line 1515, in forward
+    attn_outputs = self.attn(
+                   ^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shchoi/.cache/huggingface/modules/transformers_modules/nomic-ai/nomic-bert-2048/40b98394640e630d5276807046089b233113aa87/modeling_hf_nomic_bert.py", line 1410, in forward
+    attn_output = F.scaled_dot_product_attention(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

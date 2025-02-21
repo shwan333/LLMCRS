@@ -1,0 +1,27 @@
+  0%|                                                                                                                                                                           | 0/294 [00:00<?, ?it/s]Traceback (most recent call last):
+  File "/home/shchoi/iEvaLM-CRS/experiment_code/train_retriever.py", line 135, in <module>
+    trainer.train()
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2171, in train
+    return inner_training_loop(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2440, in _inner_training_loop
+    self._evaluate(trial, ignore_keys_for_eval, skip_scheduler=True)
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 3025, in _evaluate
+    metrics = self.evaluate(ignore_keys=ignore_keys_for_eval)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/trainer.py", line 461, in evaluate
+    return super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 4073, in evaluate
+    output = eval_loop(
+             ^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/sentence_transformers/trainer.py", line 471, in evaluation_loop
+    output = super().evaluation_loop(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 4267, in evaluation_loop
+    losses, logits, labels = self.prediction_step(model, inputs, prediction_loss_only, ignore_keys=ignore_keys)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 4440, in prediction_step
+    return_loss = inputs.get("return_loss", None)
+                  ^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'

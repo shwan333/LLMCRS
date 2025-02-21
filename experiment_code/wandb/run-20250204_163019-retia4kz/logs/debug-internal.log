@@ -1,0 +1,8 @@
+{"time":"2025-02-04T16:30:19.919315721+09:00","level":"INFO","msg":"stream: starting","core version":"0.19.5","symlink path":"/home/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250204_163019-retia4kz/logs/debug-core.log"}
+{"time":"2025-02-04T16:30:20.036068537+09:00","level":"INFO","msg":"created new stream","id":"retia4kz"}
+{"time":"2025-02-04T16:30:20.03610355+09:00","level":"INFO","msg":"stream: started","id":"retia4kz"}
+{"time":"2025-02-04T16:30:20.036128031+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"retia4kz"}
+{"time":"2025-02-04T16:30:20.036140212+09:00","level":"INFO","msg":"sender: started","stream_id":"retia4kz"}
+{"time":"2025-02-04T16:30:20.036159581+09:00","level":"INFO","msg":"handler: started","stream_id":"retia4kz"}
+{"time":"2025-02-04T16:30:20.334474095+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-04T16:32:46.800452733+09:00","level":"INFO","msg":"Pausing system monitor"}

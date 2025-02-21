@@ -1,0 +1,48 @@
+{
+  "os":  "Linux-5.4.0-139-generic-x86_64-with-glibc2.35",
+  "python":  "3.10.0",
+  "startedAt":  "2025-01-22T13:58:20.978467Z",
+  "program":  "/home/work/shchoi/iEvaLM-CRS/experiment_code/train_retriever.ipynb",
+  "git":  {
+    "remote":  "https://github.com/shwan333/LLMCRS.git",
+    "commit":  "e8d0a5580b4d4207dd60562ffd5b63b5522a4e36"
+  },
+  "email":  "dexrf1@gmail.com",
+  "root":  "/home/work/shchoi/iEvaLM-CRS/experiment_code",
+  "host":  "main1",
+  "username":  "work",
+  "executable":  "/home/work/conda/anaconda3/envs/shchoi/bin/python",
+  "codePathLocal":  "train_retriever.ipynb",
+  "cpu_count":  32,
+  "cpu_count_logical":  64,
+  "gpu":  "CUDA GPU",
+  "gpu_count":  2,
+  "disk":  {
+    "/":  {
+      "total":  "471385120768",
+      "used":  "360428404736"
+    }
+  },
+  "memory":  {
+    "total":  "845178343424"
+  },
+  "cpu":  {
+    "count":  32,
+    "countLogical":  64
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "CUDA GPU",
+      "memoryTotal":  "42949672960",
+      "cudaCores":  6912,
+      "architecture":  "Ampere"
+    },
+    {
+      "name":  "CUDA GPU",
+      "memoryTotal":  "42949672960",
+      "cudaCores":  6912,
+      "architecture":  "Ampere"
+    }
+  ],
+  "cudaVersion":  "12.2"
+}

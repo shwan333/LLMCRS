@@ -1,0 +1,8 @@
+{"time":"2025-02-04T16:27:59.443406258+09:00","level":"INFO","msg":"stream: starting","core version":"0.19.5","symlink path":"/home/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250204_162759-fmtz8ti9/logs/debug-core.log"}
+{"time":"2025-02-04T16:27:59.558258223+09:00","level":"INFO","msg":"created new stream","id":"fmtz8ti9"}
+{"time":"2025-02-04T16:27:59.558308916+09:00","level":"INFO","msg":"stream: started","id":"fmtz8ti9"}
+{"time":"2025-02-04T16:27:59.558371422+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"fmtz8ti9"}
+{"time":"2025-02-04T16:27:59.558411171+09:00","level":"INFO","msg":"handler: started","stream_id":"fmtz8ti9"}
+{"time":"2025-02-04T16:27:59.558490743+09:00","level":"INFO","msg":"sender: started","stream_id":"fmtz8ti9"}
+{"time":"2025-02-04T16:27:59.953859523+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-04T16:28:00.701277684+09:00","level":"INFO","msg":"Pausing system monitor"}

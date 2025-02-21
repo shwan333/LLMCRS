@@ -1,0 +1,15 @@
+{"time":"2025-01-24T16:47:01.105635937Z","level":"INFO","msg":"using version","core version":"0.18.5"}
+{"time":"2025-01-24T16:47:01.10566548Z","level":"INFO","msg":"created symlink","path":"/home/work/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250124_164701-12xts3p8/logs/debug-core.log"}
+{"time":"2025-01-24T16:47:01.217177129Z","level":"INFO","msg":"created new stream","id":"12xts3p8"}
+{"time":"2025-01-24T16:47:01.217241941Z","level":"INFO","msg":"stream: started","id":"12xts3p8"}
+{"time":"2025-01-24T16:47:01.217336016Z","level":"INFO","msg":"sender: started","stream_id":"12xts3p8"}
+{"time":"2025-01-24T16:47:01.217278048Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"12xts3p8"}}
+{"time":"2025-01-24T16:47:01.217330428Z","level":"INFO","msg":"handler: started","stream_id":{"value":"12xts3p8"}}
+{"time":"2025-01-24T16:47:01.564336606Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-24T16:47:07.002676197Z","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-01-24T16:49:27.841213751Z","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-01-24T16:49:27.846853Z","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-01-24T16:49:29.049349715Z","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-01-24T16:49:29.054723152Z","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-01-24T16:49:34.900855769Z","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-01-24T16:49:44.466512714Z","level":"INFO","msg":"Pausing system monitor"}

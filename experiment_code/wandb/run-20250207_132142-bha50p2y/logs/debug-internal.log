@@ -1,0 +1,15 @@
+{"time":"2025-02-07T13:21:43.091203489+09:00","level":"INFO","msg":"stream: starting","core version":"0.19.5","symlink path":"/home/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250207_132142-bha50p2y/logs/debug-core.log"}
+{"time":"2025-02-07T13:21:43.209002126+09:00","level":"INFO","msg":"created new stream","id":"bha50p2y"}
+{"time":"2025-02-07T13:21:43.209045111+09:00","level":"INFO","msg":"stream: started","id":"bha50p2y"}
+{"time":"2025-02-07T13:21:43.209138372+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"bha50p2y"}
+{"time":"2025-02-07T13:21:43.209191168+09:00","level":"INFO","msg":"handler: started","stream_id":"bha50p2y"}
+{"time":"2025-02-07T13:21:43.209257366+09:00","level":"INFO","msg":"sender: started","stream_id":"bha50p2y"}
+{"time":"2025-02-07T13:21:43.522661751+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-07T13:48:04.982561681+09:00","level":"INFO","msg":"stream: closing","id":"bha50p2y"}
+{"time":"2025-02-07T13:48:04.982594751+09:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-02-07T13:48:04.98340006+09:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-02-07T13:48:05.729550246+09:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-02-07T13:48:05.980810244+09:00","level":"INFO","msg":"handler: closed","stream_id":"bha50p2y"}
+{"time":"2025-02-07T13:48:05.980873999+09:00","level":"INFO","msg":"sender: closed","stream_id":"bha50p2y"}
+{"time":"2025-02-07T13:48:05.98085915+09:00","level":"INFO","msg":"writer: Close: closed","stream_id":"bha50p2y"}
+{"time":"2025-02-07T13:48:05.980971767+09:00","level":"INFO","msg":"stream: closed","id":"bha50p2y"}

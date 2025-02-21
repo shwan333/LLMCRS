@@ -1,0 +1,12 @@
+{"time":"2025-02-05T00:38:40.658423952+09:00","level":"INFO","msg":"stream: starting","core version":"0.19.5","symlink path":"/home/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250205_003840-ijqn2ujb/logs/debug-core.log"}
+{"time":"2025-02-05T00:38:40.774515666+09:00","level":"INFO","msg":"created new stream","id":"ijqn2ujb"}
+{"time":"2025-02-05T00:38:40.77456103+09:00","level":"INFO","msg":"stream: started","id":"ijqn2ujb"}
+{"time":"2025-02-05T00:38:40.77457993+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"ijqn2ujb"}
+{"time":"2025-02-05T00:38:40.774607184+09:00","level":"INFO","msg":"sender: started","stream_id":"ijqn2ujb"}
+{"time":"2025-02-05T00:38:40.774606645+09:00","level":"INFO","msg":"handler: started","stream_id":"ijqn2ujb"}
+{"time":"2025-02-05T00:38:41.17034329+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-05T00:43:51.304526353+09:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-02-05T00:43:58.907958052+09:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-02-05T00:43:58.910213281+09:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-02-05T00:45:08.516708449+09:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-02-05T00:45:08.524744879+09:00","level":"INFO","msg":"Pausing system monitor"}

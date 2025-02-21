@@ -1,0 +1,15 @@
+  4%|██████▌                                                                                                                                                   | 12/280 [02:44<1:03:26, 14.20s/it]Traceback (most recent call last):
+  File "/home/shchoi/iEvaLM-CRS/experiment_code/train_retriever_copy.py", line 131, in <module>                                                                                                   
+{'eval_loss': 0.059289004653692245, 'eval_runtime': 35.4644, 'eval_samples_per_second': 60.737, 'eval_steps_per_second': 0.254, 'epoch': 0}
+{'loss': 25.5133, 'grad_norm': 153.27745056152344, 'learning_rate': 5.357142857142857e-06, 'epoch': 0.12}
+{'eval_loss': 0.05760357528924942, 'eval_runtime': 35.0771, 'eval_samples_per_second': 61.408, 'eval_steps_per_second': 0.257, 'epoch': 0.12}
+{'loss': 22.3614, 'grad_norm': 109.54204559326172, 'learning_rate': 1.4285714285714285e-05, 'epoch': 0.25}
+{'eval_loss': 0.0491376593708992, 'eval_runtime': 35.4185, 'eval_samples_per_second': 60.816, 'eval_steps_per_second': 0.254, 'epoch': 0.25}
+    trainer.train()
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2171, in train
+    return inner_training_loop(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/conda/envs/shchoi_CRS/lib/python3.11/site-packages/transformers/trainer.py", line 2536, in _inner_training_loop
+    and (torch.isnan(tr_loss_step) or torch.isinf(tr_loss_step))
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

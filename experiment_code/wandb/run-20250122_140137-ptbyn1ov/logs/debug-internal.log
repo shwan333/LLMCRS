@@ -1,0 +1,12 @@
+{"time":"2025-01-22T14:01:37.799935996Z","level":"INFO","msg":"stream: starting","core version":"0.19.2","symlink path":"/home/work/shchoi/iEvaLM-CRS/experiment_code/wandb/run-20250122_140137-ptbyn1ov/logs/debug-core.log"}
+{"time":"2025-01-22T14:01:38.017548571Z","level":"INFO","msg":"created new stream","id":"ptbyn1ov"}
+{"time":"2025-01-22T14:01:38.017587681Z","level":"INFO","msg":"stream: started","id":"ptbyn1ov"}
+{"time":"2025-01-22T14:01:38.017864667Z","level":"INFO","msg":"handler: started","stream_id":"ptbyn1ov"}
+{"time":"2025-01-22T14:01:38.018856258Z","level":"INFO","msg":"writer: Do: started","stream_id":"ptbyn1ov"}
+{"time":"2025-01-22T14:01:38.019863562Z","level":"INFO","msg":"sender: started","stream_id":"ptbyn1ov"}
+{"time":"2025-01-22T14:01:38.403160738Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-22T14:04:40.239465468Z","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-01-22T14:15:50.266091849Z","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-01-22T14:15:52.113129866Z","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-01-22T14:15:52.121772518Z","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-01-22T14:16:39.860863982Z","level":"INFO","msg":"Pausing system monitor"}
