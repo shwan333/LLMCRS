@@ -14,7 +14,7 @@ from src.model.metric import RecMetric
 
 
 # compute rec recall
-def rec_eval(turn_num, mode):
+def rec_eval(turn_num, args):
 
     with open(f"../data/{args.dataset.split('_')[0]}/entity2id.json", 'r', encoding="utf-8") as f:
         entity2id = json.load(f)
@@ -37,7 +37,7 @@ def rec_eval(turn_num, mode):
     print(os.listdir(save_path))
     if os.path.exists(save_path) and len(os.listdir(save_path)) > 0:
         path_list = os.listdir(save_path)
-        print(f"turn_num: {turn_num}, mode: {mode} model: {args.crs_model} dataset: {args.dataset}", len(path_list))
+        print(f"turn_num: {turn_num}, model: {args.crs_model} dataset: {args.dataset}", len(path_list))
         
         for path in tqdm(path_list):
             if os.path.isdir(f"{save_path}/{path}"):
@@ -83,4 +83,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.root_dir = os.path.dirname(os.getcwd())
     
-    rec_eval(args.turn_num, args.mode)
+    rec_eval(args.turn_num, args)

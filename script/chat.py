@@ -158,5 +158,5 @@ if __name__ == '__main__':
                 # Update progress bar
                 pbar.update(1)
                 
-    rec_eval(args.turn_num, args.mode)
+    rec_eval(args.turn_num, args)
     
