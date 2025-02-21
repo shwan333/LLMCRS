@@ -409,7 +409,7 @@ class OPEN_MODEL():
 
     def get_batch_conv(self, conv_dict_list, rec_items_list) -> list[str]:
         
-        if self.args.prompt_ver == 'v0':
+        if self.args.prompt_ver == 'v0' or self.args.prompt_ver == 'v2':
             context_list_list = []
             for conv_dict in conv_dict_list:
                 context = conv_dict['context']
@@ -466,7 +466,7 @@ class OPEN_MODEL():
         context_list_list = []
         recommender_prompt_list = []
         
-        if self.args.prompt_ver == 'v0':
+        if self.args.prompt_ver == 'v0' or self.args.prompt_ver == 'v2':
             for conv_dict in conv_dict_list:
                 context = conv_dict['context']
                 context_list = [] # for model
